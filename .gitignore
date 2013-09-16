@@ -1,4 +1,7 @@
-accepted/*
-export/*
-renumbered/*
-skipped/*
+.editorconfig
+Config
+accepted
+export
+renumbered
+skipped
+vendor
