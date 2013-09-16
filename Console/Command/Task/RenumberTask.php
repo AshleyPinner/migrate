@@ -5,6 +5,12 @@ class RenumberTask extends Shell {
 
 	public $tasks = ['Lighthouse'];
 
+	public function getOptionParser() {
+		$parser = $this->Lighthouse->commonOptionParser();
+		$parser->description('Rename export files so they are in numerical order');
+		return $parser;
+	}
+
 	public function main($project = null) {
 		if (!$project) {
 			$projects = $this->Lighthouse->projects();
@@ -18,6 +24,9 @@ class RenumberTask extends Shell {
 	}
 
 	protected function _linkCommon($source, $target) {
+		if (substr($source, -1) !== '/') {
+			$source .= '/';
+		}
 		if (substr($target, -1) !== '/') {
 			$target .= '/';
 		}
@@ -39,14 +48,15 @@ class RenumberTask extends Shell {
 /**
  * _link
  *
- * Silence nonsense (?) file does not exist errors
- *
  * @param mixed $from
  * @param mixed $to
  * @return bool
  */
 	protected function _link($from, $to) {
-		return @symlink($from, $to);
+		if (file_exists($to)) {
+			return false;
+		}
+		return symlink($from, $to);
 	}
 
 	protected function _renumber($project) {

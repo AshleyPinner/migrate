@@ -5,6 +5,16 @@ class LighthouseTask extends Shell {
 
 	protected $_source = 'export/';
 
+	public function commonOptionParser() {
+		$parser = parent::getOptionParser();
+		$parser
+			->addArgument('project', array(
+				'help' => 'Project name',
+				'required' => false
+			));
+		return $parser;
+	}
+
 	public function load($sourceGz) {
 		$file = basename($sourceGz);
 		$targetGz = $this->_source . $file;
@@ -77,6 +87,28 @@ class LighthouseTask extends Shell {
 		return $projects;
 	}
 
+	public function config($project) {
+		list($account, $project) = $this->projectId($project);
+
+		$path = $this->_source . $account . '/projects/' . $project . '/project.json';
+
+		$config = current($this->_read($path));
+
+		$config['open_states_list'] = explode(',', $config['open_states_list']);
+		$config['closed_states_list'] = explode(',', $config['closed_states_list']);
+
+		$keep = [
+			'id',
+			'name',
+			'closed_states_list',
+			'open_states_list',
+			'open_tickets_count',
+			'created_at',
+			'updated_at'
+		];
+		return array_intersect_key($config, array_flip($keep));
+	}
+
 	public function tickets($project) {
 		list($account, $project) = $this->projectId($project);
 
@@ -89,16 +121,39 @@ class LighthouseTask extends Shell {
 		list($account, $project) = $this->projectId($project);
 
 		$Folder = new Folder($this->_source . $account . '/projects/' . $project . '/pages');
-		list($pages) = $Folder->read();
+		list(, $pages) = $Folder->read();
 		return $pages;
 	}
 
 	public function milestones($project) {
 		list($account, $project) = $this->projectId($project);
 
-		$Folder = new Folder($this->_source . $account . '/projects/' . $project . '/milestones');
-		list($milestones) = $Folder->read();
+		$path = $this->_source . $account . '/projects/' . $project . '/milestones';
+
+		$Folder = new Folder($path);
+
+		list(, $milestones) = $Folder->read();
 		return $milestones;
+	}
+
+	public function milestone($project, $id) {
+		list($account, $project) = $this->projectId($project);
+		$path = $this->_source . $account . '/projects/' . $project . '/milestones/' . $id;
+
+		return current($this->_read($path));
+	}
+
+	public function page($project, $id) {
+		list($account, $project) = $this->projectId($project);
+		$path = $this->_source . $account . '/projects/' . $project . '/pages/' . $id;
+
+		return current($this->_read($path));
+	}
+
+	public function ticket($project, $id) {
+		list($account, $project) = $this->projectId($project);
+		$path = $this->_source . $account . '/projects/' . $project . '/tickets/' . $id . '/ticket.json';
+		return current($this->_read($path));
 	}
 
 	public function source($source = null) {
@@ -106,6 +161,10 @@ class LighthouseTask extends Shell {
 			$this->_source = rtrim($source, '/') . '/';
 		}
 		return $this->_source;
+	}
+
+	protected function _read($path) {
+		return json_decode(file_get_contents($path), true);
 	}
 
 }

@@ -20,65 +20,38 @@ class LighthouseShell extends Shell {
 	public $tasks = [
 		'Lighthouse',
 		'Renumber',
+		'Accept',
+		'Skip',
 		'Review',
 	];
 
 	public function getOptionParser() {
-		$parser = parent::getOptionParser();
+		$load = $parser = parent::getOptionParser();
 		$parser->description('Process a lighthouse account export')
 		->addSubCommand('load', array(
 			'help' => 'Load a lighthouse account export file',
-			'parser' => parent::getOptionParser()
-				->addArgument('export file', array(
+			'parser' => $load->addArgument('export file', array(
 					'help' => 'The account export file from lighthouse',
 					'required' => true
 				))
 		))
 		->addSubCommand('renumber', array(
 			'help' => 'Rename export files so they are in numerical order',
-			'parser' => parent::getOptionParser()
-				->addArgument('project', array(
-					'help' => 'Project name',
-					'required' => false
-				))
+			'parser' => $this->Renumber->getOptionParser()
+		))
+		->addSubCommand('accept', array(
+			'help' => 'accept tickets by state',
+			'parser' => $this->Accept->getOptionParser()
+		))
+		->addSubCommand('skip', array(
+			'help' => 'skip tickets by state',
+			'parser' => $this->Skip->getOptionParser()
 		))
 		->addSubCommand('review', array(
-			'help' => 'Review tickets to decide what to do',
-			'parser' => parent::getOptionParser()
-				->addArgument('project', array(
-					'help' => 'Project name',
-					'required' => false
-				))
+			'help' => 'Interactively review milestones, pages and tickets',
+			'parser' => $this->Review->getOptionParser()
 		));
 
-		/*
-		->addSubCommand('accounts', array(
-			'help' => 'List lighthouse accounts already loaded',
-		))
-		->addSubCommand('projects', array(
-			'help' => 'List projects for a given account',
-			'parser' => parent::getOptionParser()
-				->addArgument('account', array(
-					'help' => 'The account name',
-					'required' => true
-				))
-		));
-
-		foreach (array('tickets', 'pages', 'milestones') as $type) {
-			$parser->addSubCommand($type, array(
-				'help' => "List $type for a given project",
-				'parser' => parent::getOptionParser()
-					->addArgument('account', array(
-						'help' => 'The account name',
-						'required' => true
-					))
-					->addArgument('project', array(
-						'help' => 'The project identifier or name',
-						'required' => true
-					))
-			));
-		}
-		*/
 		return $parser;
 	}
 

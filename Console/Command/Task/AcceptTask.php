@@ -13,6 +13,22 @@ class AcceptTask extends Shell {
 
 	protected $_pathPrefix = 'accepted/';
 
+	public function getOptionParser() {
+		$parser = $this->Lighthouse->commonOptionParser();
+		$parser
+			->description('Accept tickets by state')
+			->addOption('open', array(
+				'boolean' => true,
+				'help' => 'All open tickets'
+			))
+			->addOption('closed', array(
+				'boolean' => true,
+				'help' => 'All closed tickets'
+			));
+
+		return $parser;
+	}
+
 	public function main($project = null) {
 		if (!$project) {
 			$settings = $this->settings;
