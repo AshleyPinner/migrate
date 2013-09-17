@@ -1,19 +1,9 @@
 <?php
-App::uses('Shell', 'Console/Command');
+App::uses('AppTask', 'Console/Command/Task');
 
-class LighthouseTask extends Shell {
+class LHTask extends Shell {
 
 	protected $_source = 'export/';
-
-	public function commonOptionParser() {
-		$parser = parent::getOptionParser();
-		$parser
-			->addArgument('project', array(
-				'help' => 'Project name',
-				'required' => false
-			));
-		return $parser;
-	}
 
 	public function load($sourceGz) {
 		$file = basename($sourceGz);

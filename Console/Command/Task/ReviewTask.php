@@ -1,9 +1,9 @@
 <?php
-App::uses('Shell', 'Console/Command');
+App::uses('AppTask', 'Console/Command/Task');
 
-class ReviewTask extends Shell {
+class ReviewTask extends AppTask {
 
-	public $tasks = ['Lighthouse'];
+	public $tasks = ['LH'];
 
 	public $settings = [
 		'accept' => null,
@@ -12,7 +12,7 @@ class ReviewTask extends Shell {
 	];
 
 	public function getOptionParser() {
-		$parser = $this->Lighthouse->commonOptionParser();
+		$parser = parent::getOptionParser();
 		$parser->description('Interactively review milestones, pages and tickets');
 		return $parser;
 	}
@@ -20,8 +20,8 @@ class ReviewTask extends Shell {
 	public function main($project = null) {
 		if (!$project) {
 			$settings = $this->settings;
-			$this->Lighthouse->source('renumbered');
-			$projects = $this->Lighthouse->projects();
+			$this->LH->source('renumbered');
+			$projects = $this->LH->projects();
 			foreach ($projects as $project) {
 				$this->settings = $settings;
 				$this->main($project);
@@ -29,7 +29,7 @@ class ReviewTask extends Shell {
 			return;
 		}
 
-		$this->settings += $this->Lighthouse->config($project);
+		$this->settings += $this->LH->config($project);
 		$this->milestones($project);
 		$this->pages($project);
 		$this->tickets($project);
@@ -38,7 +38,7 @@ class ReviewTask extends Shell {
 	public function milestones($project) {
 		$settings = $this->settings;
 
-		$milestones = $this->Lighthouse->milestones($project);
+		$milestones = $this->LH->milestones($project);
 		foreach ($milestones as $milestone) {
 			$this->milestone($project, $milestone);
 		}
@@ -49,7 +49,7 @@ class ReviewTask extends Shell {
 	public function pages($project) {
 		$settings = $this->settings;
 
-		$pages = $this->Lighthouse->pages($project);
+		$pages = $this->LH->pages($project);
 		foreach ($pages as $page) {
 			$this->page($project, $page);
 		}
@@ -60,7 +60,7 @@ class ReviewTask extends Shell {
 	public function tickets($project) {
 		$settings = $this->settings;
 
-		$tickets = $this->Lighthouse->tickets($project);
+		$tickets = $this->LH->tickets($project);
 		foreach ($tickets as $ticket) {
 			$this->ticket($project, $ticket);
 		}
@@ -69,23 +69,23 @@ class ReviewTask extends Shell {
 	}
 
 	public function milestone($project, $id) {
-		$data = $this->Lighthouse->milestone($project, $id);
+		$data = $this->LH->milestone($project, $id);
 		$this->_process($project, 'milestones', $id, $data);
 	}
 
 	public function page($project, $id) {
-		$data = $this->Lighthouse->page($project, $id);
+		$data = $this->LH->page($project, $id);
 		$this->_process($project, 'pages', $id, $data);
 	}
 
 	public function ticket($project, $id) {
 		$type = 'tickets';
-		list($account, $project) = $this->Lighthouse->projectId($project);
+		list($account, $project) = $this->LH->projectId($project);
 		$this->_process($project, $type, $id, $data);
 	}
 
 	protected function _process($project, $type, $id, $data) {
-		list($account, $project) = $this->Lighthouse->projectId($project);
+		list($account, $project) = $this->LH->projectId($project);
 		$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 		$path = $this->_path($account, $project, $type, $id);

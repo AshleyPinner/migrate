@@ -18,7 +18,7 @@ class LighthouseShell extends Shell {
 	protected $_project;
 
 	public $tasks = [
-		'Lighthouse',
+		'LH',
 		'Renumber',
 		'Accept',
 		'Skip',
@@ -69,6 +69,6 @@ class LighthouseShell extends Shell {
 	}
 
 	public function load() {
-		$this->Lighthouse->load($this->args[0]);
+		$this->LH->load($this->args[0]);
 	}
 }

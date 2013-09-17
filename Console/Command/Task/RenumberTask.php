@@ -1,19 +1,19 @@
 <?php
-App::uses('Shell', 'Console/Command');
+App::uses('AppTask', 'Console/Command/Task');
 
-class RenumberTask extends Shell {
+class RenumberTask extends AppTask {
 
-	public $tasks = ['Lighthouse'];
+	public $tasks = ['LH'];
 
 	public function getOptionParser() {
-		$parser = $this->Lighthouse->commonOptionParser();
+		$parser = parent::getOptionParser();
 		$parser->description('Rename export files so they are in numerical order');
 		return $parser;
 	}
 
 	public function main($project = null) {
 		if (!$project) {
-			$projects = $this->Lighthouse->projects();
+			$projects = $this->LH->projects();
 			foreach ($projects as $project) {
 				$this->main($project);
 			}
@@ -60,7 +60,7 @@ class RenumberTask extends Shell {
 	}
 
 	protected function _renumber($project) {
-		list($account, $project) = $this->Lighthouse->projectId($project);
+		list($account, $project) = $this->LH->projectId($project);
 		if (!$project) {
 			return;
 		}
