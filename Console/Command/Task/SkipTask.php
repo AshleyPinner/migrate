@@ -29,6 +29,9 @@ class SkipTask extends AppTask {
 	}
 
 	public function main($project = null) {
+		$this->settings['open'] = $this->params['open'];
+		$this->settings['closed'] = $this->params['closed'];
+
 		if (empty($this->settings['open']) && empty($this->settings['closed'])) {
 			return $this->out($this->getOptionParser()->help());
 		}
