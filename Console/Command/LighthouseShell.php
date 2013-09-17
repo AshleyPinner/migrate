@@ -56,19 +56,6 @@ class LighthouseShell extends Shell {
 		return $parser;
 	}
 
-	public function initialize() {
-		$folders = array(
-			'export',
-			'skipped',
-			'import'
-		);
-		foreach ($folders as $folder) {
-			if (!is_dir($folder)) {
-				mkdir($folder, 0777, true);
-			}
-		}
-	}
-
 	public function load() {
 		$this->LH->load($this->args[0]);
 	}

@@ -9,6 +9,7 @@ class LHTask extends Shell {
 		$file = basename($sourceGz);
 		$targetGz = $this->_source . $file;
 
+		mkdir(dirname($targetGz), 0777, true);
 		copy($sourceGz, $targetGz);
 		passthru(sprintf("cd %s; tar xvzf %s", escapeshellarg($this->_source), escapeShellarg($file)));
 		unlink($targetGz);
@@ -154,6 +155,9 @@ class LHTask extends Shell {
 	}
 
 	protected function _read($path) {
+		if (!file_exists($path)) {
+			throw new CakeException(sprintf('The file %s doesn\'t exist', $path));
+		}
 		return json_decode(file_get_contents($path), true);
 	}
 
