@@ -72,12 +72,12 @@ class RenumberTask extends AppTask {
  */
 	protected function _link($from, $to) {
 		if (file_exists($to)) {
-			$this->out(sprintf('skipping %s, already exists', $to), 1, Shell::VERBOSE);
+			$this->out(sprintf(' * skipping %s, already exists', $to), 1, Shell::VERBOSE);
 			return false;
 		}
 
 		if ($this->settings['n']) {
-			$this->out(sprintf('skipping %s, dry run', $to), 1, Shell::VERBOSE);
+			$this->out(sprintf(' * skipping %s, dry run', $to), 1, Shell::VERBOSE);
 			return false;
 		}
 
@@ -94,7 +94,7 @@ class RenumberTask extends AppTask {
 			}
 		}
 
-		$this->out(sprintf('linking %s to %s', $to, $from), 1, Shell::VERBOSE);
+		$this->out(sprintf(' * linking %s to %s', $to, $from), 1, Shell::VERBOSE);
 		return symlink($from, $to);
 	}
 
@@ -130,7 +130,7 @@ class RenumberTask extends AppTask {
 
 		$target = $toDir . '/' . $to;
 		if (file_exists($target)) {
-			$this->out(sprintf(' * Skipping %s, already processed', $ticketId));
+			$this->out(sprintf(' * Skipping %s, already processed', $ticketId), 1, Shell::VERBOSE);
 			return false;
 		}
 
