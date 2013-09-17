@@ -5,13 +5,31 @@ class RenumberTask extends AppTask {
 
 	public $tasks = ['LH'];
 
+	public $settings = [
+		'y' => null,
+		'n' => null
+	];
+
 	public function getOptionParser() {
 		$parser = parent::getOptionParser();
-		$parser->description('Rename export files so they are in numerical order');
+		$parser
+			->description('Rename export files so they are in numerical order')
+			->addOption('yes', array(
+				'boolean' => true,
+				'help' => 'Skip the interactive check, answer yes to all questions'
+			))
+			->addOption('no', array(
+				'boolean' => true,
+				'help' => 'Skip the interactive check, answer no to all questions'
+			));
+
 		return $parser;
 	}
 
 	public function main($project = null) {
+		$this->settings['n'] = $this->params['no'];
+		$this->settings['y'] = $this->params['yes'];
+
 		if (!$project) {
 			$projects = $this->LH->projects();
 			foreach ($projects as $project) {
@@ -54,8 +72,29 @@ class RenumberTask extends AppTask {
  */
 	protected function _link($from, $to) {
 		if (file_exists($to)) {
+			$this->out(sprintf('skipping %s, already exists', $to), 1, Shell::VERBOSE);
 			return false;
 		}
+
+		if ($this->settings['n']) {
+			$this->out(sprintf('skipping %s, dry run', $to), 1, Shell::VERBOSE);
+			return false;
+		}
+
+		$yes = $this->settings['y'];
+		if (!$yes) {
+			$answer = $this->in(sprintf('link %s to %s?', $to, $from), ['y', 'n', 'Y', 'N'], 'n');
+			if ($answer === strtoupper($answer)) {
+				$answer = strtolower($answer);
+				$this->settings[$answer] = true;
+			}
+
+			if ($answer === 'n') {
+				return false;
+			}
+		}
+
+		$this->out(sprintf('linking %s to %s', $to, $from), 1, Shell::VERBOSE);
 		return symlink($from, $to);
 	}
 
@@ -97,7 +136,6 @@ class RenumberTask extends AppTask {
 
 		$project = basename(dirname(dirname($target)));
 
-		$this->out(sprintf(' * Creating %s/%s', $project, basename($target)), 1);
 		return $this->_link(preg_replace('@[^/]+@', '..', $toDir) . '/' . $fromDir . '/' . $ticketId, $target);
 	}
 }
