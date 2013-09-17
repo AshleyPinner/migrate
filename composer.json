@@ -1,0 +1,35 @@
+{
+  "name": "AD7six/migrate-lh-to-gh",
+  "description": "A migration script for moving from lighthouseapp to github",
+  "type": "project",
+  "keywords" : [],
+  "homepage" : "http://ad7six.com",
+  "license" : "MIT",
+  "require" : {
+    "php" : ">=5.4",
+    "cakephp/cakephp" : "2.4.0",
+    "knplabs/github-api" : "*"
+  },
+  "minimum-stability": "dev",
+  "repositories" : [
+    {
+      "type": "package",
+      "package": {
+        "name" : "cakephp/cakephp",
+        "version" : "2.4.0",
+        "dist" : {
+          "type" : "zip",
+          "url" : "https://github.com/cakephp/cakephp/archive/2.4.0.zip"
+        },
+        "source" : {
+          "type" : "git",
+          "url" : "git://github.com/cakephp/cakephp.git",
+          "reference" : "2.4.0"
+        }
+      }
+    }
+  ],
+  "config": {
+      "preferred-install": "source"
+  }
+}
