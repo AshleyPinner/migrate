@@ -6,8 +6,7 @@ class SkipTask extends AppTask {
 	public $tasks = ['LH'];
 
 	public $settings = [
-		'accept' => null,
-		'open' => true,
+		'open' => false,
 		'closed' => false
 	];
 
@@ -30,6 +29,10 @@ class SkipTask extends AppTask {
 	}
 
 	public function main($project = null) {
+		if (empty($this->settings['open']) && empty($this->settings['closed'])) {
+			return $this->out($this->getOptionParser()->help());
+		}
+
 		if (!$project) {
 			$settings = $this->settings;
 			$this->LH->source('renumbered');

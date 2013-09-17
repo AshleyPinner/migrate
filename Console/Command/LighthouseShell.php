@@ -22,7 +22,7 @@ class LighthouseShell extends Shell {
 		'Renumber',
 		'Accept',
 		'Skip',
-		'Review',
+		//'Review',
 	];
 
 	public function getOptionParser() {
@@ -47,10 +47,11 @@ class LighthouseShell extends Shell {
 			'help' => 'skip tickets by state',
 			'parser' => $this->Skip->getOptionParser()
 		))
+		/*
 		->addSubCommand('review', array(
 			'help' => 'Interactively review milestones, pages and tickets',
 			'parser' => $this->Review->getOptionParser()
-		));
+		))*/;
 
 		return $parser;
 	}
