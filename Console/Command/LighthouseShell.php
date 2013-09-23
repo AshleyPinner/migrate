@@ -1,5 +1,9 @@
 <?php
 App::uses('Folder', 'Utility');
+App::uses('LHTask', 'Console/Command/Task/LH');
+App::uses('RenumberTask', 'Console/Command/Task/LH');
+App::uses('AcceptTask', 'Console/Command/Task/LH');
+App::uses('SkipTask', 'Console/Command/Task/LH');
 
 class LighthouseShell extends Shell {
 
@@ -18,10 +22,10 @@ class LighthouseShell extends Shell {
 	protected $_project;
 
 	public $tasks = [
-		'LH',
-		'Renumber',
-		'Accept',
-		'Skip',
+		'Lighthouse.LH',
+		'Lighthouse.Renumber',
+		'Lighthouse.Accept',
+		'Lighthouse.Skip',
 		//'Review',
 	];
 
@@ -59,4 +63,5 @@ class LighthouseShell extends Shell {
 	public function load() {
 		$this->LH->load($this->args[0]);
 	}
+
 }

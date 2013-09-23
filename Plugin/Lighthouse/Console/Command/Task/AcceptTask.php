@@ -1,5 +1,5 @@
 <?php
-App::uses('SkipTask', 'Console/Command/Task');
+App::uses('SkipTask', 'Lighthouse.Console/Command/Task');
 
 class AcceptTask extends SkipTask {
 
