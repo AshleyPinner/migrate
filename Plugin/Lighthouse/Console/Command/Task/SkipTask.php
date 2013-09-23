@@ -3,7 +3,7 @@ App::uses('AppTask', 'Console/Command/Task');
 
 class SkipTask extends AppTask {
 
-	public $tasks = ['LH'];
+	public $tasks = ['Lighthouse.LH'];
 
 	public $settings = [
 		'open' => false,

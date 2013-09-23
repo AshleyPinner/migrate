@@ -1,5 +1,7 @@
 <?php
+
 App::uses('AppTask', 'Console/Command/Task');
+App::uses('Folder', 'Utility');
 
 class LHTask extends Shell {
 
@@ -170,6 +172,13 @@ class LHTask extends Shell {
 		$this->_write($account, $project, 'tickets', $data['ticket']['filename'], $data);
 	}
 
+/**
+ * _read
+ *
+ * @throws CakeException if the file doesn't exist
+ * @param mixed $path
+ * @return void
+ */
 	protected function _read($path) {
 		if (!file_exists($path)) {
 			throw new CakeException(sprintf('The file %s doesn\'t exist', $path));

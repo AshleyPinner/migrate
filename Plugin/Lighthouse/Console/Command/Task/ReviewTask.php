@@ -3,7 +3,7 @@ App::uses('AppTask', 'Console/Command/Task');
 
 class ReviewTask extends AppTask {
 
-	public $tasks = ['LH'];
+	public $tasks = ['Lighthouse.LH'];
 
 	public $settings = [
 		'accept' => null,
