@@ -16,6 +16,11 @@ class LHTask extends Shell {
 	}
 
 	public function projectId($input, $account = null, $warn = true) {
+		if (file_exists($input)) {
+			debug(Debugger::trace());
+			debug ($input);
+			die;
+		}
 		if (strpos($input, '/')) {
 			list($account, $input) = explode('/', $input);
 		}
@@ -144,7 +149,13 @@ class LHTask extends Shell {
 	public function ticket($project, $id) {
 		list($account, $project) = $this->projectId($project);
 		$path = $this->_source . $account . '/projects/' . $project . '/tickets/' . $id . '/ticket.json';
-		return current($this->_read($path));
+
+		$return = $this->_read($path);
+
+		if ($this->_source !== 'accepted/') {
+			$return = current($return);
+		}
+		return $return;
 	}
 
 	public function source($source = null) {
@@ -154,11 +165,37 @@ class LHTask extends Shell {
 		return $this->_source;
 	}
 
+	public function updateTicket($project, $data) {
+		list($account, $project) = $this->projectId($project);
+		$this->_write($account, $project, 'tickets', $data['ticket']['filename'], $data);
+	}
+
 	protected function _read($path) {
 		if (!file_exists($path)) {
 			throw new CakeException(sprintf('The file %s doesn\'t exist', $path));
 		}
 		return json_decode(file_get_contents($path), true);
+	}
+
+	protected function _write($account, $project, $type, $id, $data) {
+		$path = $this->_path($account, $project, $type, $id);
+
+		$path = $this->_source . $path;
+		$this->out("Updating $path", 1, Shell::VERBOSE);
+
+		$File = new File($path, true);
+
+		if (!is_string($data)) {
+			$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		}
+		return $File->write($data);
+	}
+
+	protected function _path($account, $project, $type, $id) {
+		if ($type === 'tickets') {
+			$id .= '/ticket.json';
+		}
+		return "$account/projects/$project/$type/$id";
 	}
 
 }

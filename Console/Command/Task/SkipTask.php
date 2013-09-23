@@ -124,7 +124,7 @@ class SkipTask extends AppTask {
 		if ($type === 'tickets') {
 			$id .= '/ticket.json';
 		}
-		return "$account/$project/$type/$id";
+		return "$account/projects/$project/$type/$id";
 	}
 
 }
