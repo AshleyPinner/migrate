@@ -14,7 +14,7 @@ class CommandListShell extends AppShell {
 		$this->out('<info>Console/cake lighthouse.load</info>');
 		$this->out('<info>Console/cake lighthouse.renumber</info>');
 		$this->out('<info>Console/cake lighthouse.accept</info>');
-		$this->out('<info>Console/cake lighthouse.skip</info> (optional)');
+		$this->out('<info>Console/cake lighthouse.skip</info> <comment>(optional)</comment>');
 
 		$this->hr();
 		$this->out();
@@ -29,7 +29,7 @@ class CommandListShell extends AppShell {
 		$this->out();
 		$this->out('<info>Lighthouse migration shell</info>', 2);
 
-		$description = 'For help with each command - call with no arguments.' .
+		$description = 'For help with each command append `--help`.' .
 			' The commands should be called in the order shown, each asks for' .
 			' confirmation before doing anything for your own piece of mind.' .
 			' To get more information about what the shell is doing, use the' .
