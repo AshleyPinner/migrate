@@ -1,7 +1,6 @@
 <?php
-App::uses('AppTask', 'Console/Command/Task');
 
-class ReviewTask extends AppTask {
+class ReviewTask extends AppShell {
 
 	public $tasks = ['Lighthouse.LH'];
 

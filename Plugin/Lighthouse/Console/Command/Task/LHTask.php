@@ -1,6 +1,5 @@
 <?php
 
-App::uses('AppTask', 'Console/Command/Task');
 App::uses('Folder', 'Utility');
 
 class LHTask extends Shell {

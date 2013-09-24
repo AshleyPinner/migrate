@@ -10,13 +10,14 @@ class LoadShell extends AppShell {
 	}
 
 	public function getOptionParser() {
-		$parser = parent::getOptionParser();
+		$parser = Shell::getOptionParser();
 		$parser
 			->description('Process a lighthouse account export')
 			->addArgument('export file', array(
 				'help' => 'The account export file from lighthouse',
 				'required' => true
-			));
+			))
+			->epilog('Before starting request an account export file from lighthouse via https://<your-account>.lighthouseapp.com/export. Once the export file has been received, load the export file using this command.');
 
 		return $parser;
 	}
