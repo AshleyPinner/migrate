@@ -11,6 +11,38 @@ This will download the required code and setup dependencies.
 
 ## How to use
 
+If you are familiar with cakephp, or even if you are not, you can dive straight in and you'll be
+guided through the process:
+
+	$ Console/cake
+
+	Lighthouse migration shell
+
+	For help with each command append `--help`. The commands should
+	be called in the order shown, each asks for confirmation before
+	doing anything for your own piece of mind. To get more
+	information about what the shell is doing, use the `--verbose`
+	flag
+	---------------------------------------------------------------
+
+	Lighthouse functions:
+
+	Console/cake lighthouse.load
+	Console/cake lighthouse.renumber
+	Console/cake lighthouse.accept
+	Console/cake lighthouse.skip (optional)
+	Console/cake lighthouse.review (optional)
+	Console/cake lighthouse.names (optional)
+	---------------------------------------------------------------
+
+	Github functions:
+
+	Console/cake github.setup
+	Console/cake github.import
+	---------------------------------------------------------------
+
+	$
+
 ##Importing data from Lighthouse
 
 Existing tickets must be exported from Lighthouse using the administrative "account export" tool.
