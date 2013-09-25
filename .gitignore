@@ -1,7 +1,10 @@
 .editorconfig
 Config
-accepted
+vendor
+
+#content folders
 export
 renumbered
+accepted
 skipped
-vendor
+spam
