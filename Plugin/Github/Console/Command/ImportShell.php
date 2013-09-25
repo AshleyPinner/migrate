@@ -30,9 +30,13 @@ class ImportShell extends AppShell {
 	];
 
 	public function getOptionParser() {
-		$parser = parent::getOptionParser();
+		$parser = new ConsoleOptionParser('Github.import');
 		$parser
 			->description('Import tickets to github')
+			->addArgument('project', array(
+				'help' => 'Project name',
+				'required' => true
+			))
 			->epilog('Milestones and labels are created as required, this command requires an api token with commit rights to the relevant repository to be able to create milestones and labels, otherwise tickets are created without this information.');
 
 		return $parser;
@@ -102,7 +106,7 @@ class ImportShell extends AppShell {
 		return $data;
 	}
 
-	protected function _createComments($project, $ticket) {
+	protected function _createComments($ticket) {
 	}
 
 	protected function _prepareTicketBody($data, $ticket) {
@@ -116,8 +120,7 @@ class ImportShell extends AppShell {
 			"\n" .
 			$data['body'];
 
-		debug ($data);
-		die;
+		return $data;
 	}
 
 	protected function _escapeMentions($data) {
@@ -127,12 +130,14 @@ class ImportShell extends AppShell {
 	protected function _translateMilestone($data) {
 		$milestone = $data['milestone'];
 		if (!$milestone) {
+			unset($data['milestone']);
 			return $data;
 		}
 
 		if (!$this->_milestones) {
-			$response = $this->Client->api('issue')->milestones()->all($this->_config['account'], $this->_config['project']);
-			$this->_milestones = Hash::combine($response, '{n}.title', '{n}.id');
+			$response = $this->Client->api('issue')->milestones()
+				->all($this->_config['account'], $this->_config['project']);
+			$this->_milestones = Hash::combine($response, '{n}.title', '{n}.number');
 		}
 
 		if (!isset($this->_milestones[$milestone])) {
@@ -141,10 +146,11 @@ class ImportShell extends AppShell {
 			];
 			$result = $this->Client->api('issue')->milestones()
 				->create($this->_config['account'], $this->_config['project'], $toCreate);
-			$this->_milestones[$milestone] = $result['id'];
+			$this->_milestones[$milestone] = $result['number'];
 		}
 
 		$data['milestone'] = $this->_milestones[$milestone];
+
 		return $data;
 	}
 
@@ -155,7 +161,8 @@ class ImportShell extends AppShell {
 		}
 
 		if (!$this->_labels) {
-			$response = $this->Client->api('issue')->labels()->all($this->_config['account'], $this->_config['project']);
+			$response = $this->Client->api('issue')->labels()
+				->all($this->_config['account'], $this->_config['project']);
 			$this->_labels = Hash::combine($response, '{n}.name', '{n}');
 		}
 
