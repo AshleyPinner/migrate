@@ -25,6 +25,8 @@ class ImportShell extends AppShell {
 
 	protected $_milestones = [];
 
+	protected $_users = [];
+
 	public $tasks = [
 		'Lighthouse.LH',
 	];
@@ -47,6 +49,7 @@ class ImportShell extends AppShell {
 
 		Configure::load('github');
 		$this->_config = Configure::read('Github');
+		$this->_users = $this->_config['users'];
 
 		$this->Client = new Github\Client();
 		$this->Client->authenticate($this->_config['token'], '', Github\Client::AUTH_HTTP_TOKEN);
@@ -72,12 +75,16 @@ class ImportShell extends AppShell {
 		$tickets = $this->LH->tickets($pid);
 		foreach ($tickets as $id) {
 			$data = $this->LH->ticket($pid, $id);
+			if (!$data) {
+				$this->out(sprintf('<error>Skipping invalid ticket with id %s</error>', $id));
+				continue;
+			}
 			if (empty($data['github'])) {
 				$data = $this->_createTicket($data);
 				$this->LH->updateTicket($pid, $data);
 			}
 
-			$this->_createComments($data);
+			$this->_createComments($pid, $data);
 		}
 	}
 
@@ -106,16 +113,59 @@ class ImportShell extends AppShell {
 		return $data;
 	}
 
-	protected function _createComments($ticket) {
+	protected function _createComments($pid, $ticket) {
+		$return = false;
+
+		foreach ($ticket['comments'] as &$comment) {
+			$return = $this->_createComment($comment, $ticket) || $return;
+		}
+
+		if ($return) {
+			return $this->LH->updateTicket($pid, $ticket);
+		}
+		return false;
+	}
+
+	protected function _createComment(&$comment, $ticket) {
+		if (!empty($comment['github']) ||
+			!$comment['body'] ||
+			$ticket['ticket']['body'] === $comment['body']) {
+			return false;
+		};
+
+		$data['body'] = $this->_escapeMentions($comment['body']);
+
+		$author = $comment['user_name'];
+		if (!empty($this->_users[$author])) {
+			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_users[$author]);
+		}
+
+		$data['body'] = sprintf("Created by **%s**\n", $author) .
+			sprintf("On <time datetime='%s'>%s</time>\n", $comment['created_at'], date('jS M Y', strtotime($comment['created_at']))) .
+			"- - - -\n" .
+			"\n" .
+			$data['body'];
+
+		$return = $this->Client->api('issue')->comments()
+			->create($this->_config['account'], $this->_config['project'], $ticket['github']['number'], $data);
+
+		if ($return) {
+			$comment['github'] = $return;
+		}
+		return $return;
 	}
 
 	protected function _prepareTicketBody($data, $ticket) {
 		$data['title'] = $this->_escapeMentions($data['title']);
 		$data['body'] = $this->_escapeMentions($data['body']);
 
-		$data['body'] = sprintf("Created by **%s**\n", $ticket['created_by']) .
+		$author = $ticket['created_by'];
+		if (!empty($this->_users[$author])) {
+			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_users[$author]);
+		}
+		$data['body'] = sprintf("Created by **%s**\n", $author) .
 			sprintf("On <time datetime='%s'>%s</time>\n", $ticket['created_at'], date('jS M Y', strtotime($ticket['created_at']))) .
-			sprintf("*(via [Lighthouse](%s)*\n", $ticket['link']) .
+			sprintf("*(via [Lighthouse](%s))*\n", $ticket['link']) .
 			"- - - -\n" .
 			"\n" .
 			$data['body'];
@@ -155,8 +205,9 @@ class ImportShell extends AppShell {
 	}
 
 	protected function _ensureLabels($data) {
-		$labels = $data['labels'];
+		$labels = array_filter($data['labels']);
 		if (!$labels) {
+			unset($data['labels']);
 			return $data;
 		}
 
@@ -181,4 +232,14 @@ class ImportShell extends AppShell {
 		return $data;
 	}
 
+	protected function _update($account, $project, $type, $data) {
+		$id = $data['ticket']['filename'];
+		$path = $this->_path($account, $project, $type, $id);
+
+		$File = new File('accepted/' . $path, true);
+		if (!is_string($data)) {
+			$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		}
+		return $File->write($data);
+	}
 }
