@@ -6,6 +6,10 @@ class SetupShell extends AppShell {
 
 	protected $_config = [];
 
+	public $tasks = [
+		'Lighthouse.LH',
+	];
+
 	public function getOptionParser() {
 		$parser = new ConsoleOptionParser('Github.setup');
 		$parser
@@ -27,6 +31,7 @@ class SetupShell extends AppShell {
 		$this->_config = Configure::read('Github');
 
 		$this->token();
+		$this->projects();
 		$this->users();
 
 		$this->_dump('github', $this->_config);
@@ -51,6 +56,29 @@ class SetupShell extends AppShell {
 			}
 			$username = $this->in("github username for '$name' ?");
 			$this->_config['users'][$name] = $username;
+		}
+	}
+
+	public function projects() {
+		$this->LH->source('accepted');
+		foreach ($this->LH->projects() as $name) {
+			list($account, $project) = $this->LH->projectId($name);
+			if (isset($this->_config['projects'][$account][$project])) {
+				$ghProject = $this->_config['projects'][$account][$project]['account'] . '/' .
+					$this->_config['projects'][$account][$project]['project'];
+				$this->out(sprintf('Skipping %s, already mapped to github project %s', $name, $ghProject), 1, Shell::VERBOSE);
+				continue;
+			}
+
+			$ghAccount = $ghProject = false;
+			$response = $this->in("Github account/project importing $name?");
+			if ($response) {
+				list($ghAccount, $ghProject) = explode('/', $response);
+			}
+			$this->_config['projects'][$account][$project] = [
+				'account' => $ghAccount,
+				'project' => $ghProject
+			];
 		}
 	}
 
