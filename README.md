@@ -106,7 +106,8 @@ The shell will do 3 things:
  * Map lighthouse projects to github projects (i.e. where the tickets should be imported to)
  * Map lighthouse usernames to github usernames
 
-The oauth token is obtained from [your account page on github](https://github.com/settings/tokens/new)). This is required to be able to use github's api.
+The oauth token is obtained from [your account page on github](https://github.com/settings/tokens/new). 
+This is required to be able to use github's api.
 
 Mapping projects to github projects defines which projects will be processed. If there is no
 map defined the import process will not touch the pre-processed lighthouse project data.
