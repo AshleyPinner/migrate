@@ -43,7 +43,11 @@ guided through the process:
 
 	$
 
-##Importing data from Lighthouse
+##Lighthouse
+
+Export from lighthouse.
+
+###Importing
 
 Existing tickets must be exported from Lighthouse using the administrative "account export" tool.
 This can be found at https://your-account.lighthouseapp.com/export. Lighthouse will then mail
@@ -55,12 +59,11 @@ Required steps to set things up are to run the following commands:
     Console/cake lighthouse.renumber
     Console/cake lighthouse.accept [--open] [--closed]
 
-One or both of `--open`, `--closed` must be specified. This will create copies of the export
-files with the data in the format used by the import process using the ticket open/closed state
-as the primary means of determining which tickets to import.
+For the last comment, one or both of `--open`, `--closed` must be specified. This will create copies 
+of the export files with the data in the format used by the import process using the ticket 
+open/closed state as the primary means of determining which tickets to import.
 
-
-###Review data
+###Review
 
 Optionally after this, it's recommended to review the data that will be imported.
 This gives the possibility to remove individual tickets, or a whole user's activity from the
@@ -94,7 +97,11 @@ to equivalent users in the destination ticket system. The names of assigned user
 automatically extracted during the `accept` shell, this step none-interactively adds all
 usernames for all tickets/comments to the list of known usernames.
 
-##Setup github
+##Github
+
+Import to github.
+
+###Setup
 
 To use the shell to import tickets to github, first run the setup shell:
 
@@ -116,7 +123,7 @@ Mapping usernames is not required and this step can be aborted if desired, the o
 is that usernames will be displayed as plain text instead of being a link to the github-user's
 profile.
 
-##Import to github
+###Import!
 
 It's recommended that before running the import script in anger - it is run against a fork
 of the project to check that imported tickets/comments are created as expected. The shell
@@ -129,3 +136,7 @@ To start the import process, just specify the project name:
 
     Console/cake github.import projectname
     Github issue lh-import/example #1 created for ticket A real ticket title
+    
+##Bugs and support
+
+Found a problem or have a feature request? Please [create an issue](https://github.com/lh-import/migrate/issues)
