@@ -46,7 +46,7 @@ guided through the process:
 ##Importing data from Lighthouse
 
 Existing tickets must be exported from Lighthouse using the administrative "account export" tool.
-This can be found at https://<your-account>.lighthouseapp.com/export. Lighthouse will then mail
+This can be found at https://your-account.lighthouseapp.com/export. Lighthouse will then mail
 an export file which is the input to the migration process.
 
 Required steps to set things up are to run the following commands:
