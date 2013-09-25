@@ -1,4 +1,4 @@
-# Migration
+# Migrate
 
 This is a migration tool for moving tickets from lighthouse app to other systems.
 
