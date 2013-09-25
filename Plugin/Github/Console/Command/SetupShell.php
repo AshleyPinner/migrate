@@ -30,9 +30,9 @@ class SetupShell extends AppShell {
 		$this->_lhConfig = Configure::read('Lighthouse');
 		$this->_config = Configure::read('Github');
 
-		$this->token();
 		$this->projects();
 		$this->users();
+		$this->token();
 
 		$this->_dump('github', $this->_config);
 	}
