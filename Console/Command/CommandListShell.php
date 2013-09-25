@@ -16,6 +16,7 @@ class CommandListShell extends AppShell {
 		$this->out('<info>Console/cake lighthouse.accept</info>');
 		$this->out('<info>Console/cake lighthouse.skip</info> <comment>(optional)</comment>');
 		$this->out('<info>Console/cake lighthouse.names</info> <comment>(optional)</comment>');
+		$this->out('<info>Console/cake lighthouse.review</info> <comment>(optional)</comment>');
 
 		$this->hr();
 		$this->out();
