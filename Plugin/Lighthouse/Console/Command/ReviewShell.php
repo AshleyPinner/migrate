@@ -116,7 +116,7 @@ class ReviewShell extends AppShell {
 			return true;
 		}
 
-		$this->out('<info>Comment rejected</info>', 1, $verbosity);
+		$this->out('<warning>Comment rejected</warning>', 1, $verbosity);
 		return false;
 	}
 
@@ -175,7 +175,7 @@ class ReviewShell extends AppShell {
 			return;
 		}
 
-		$this->out('<info>Ticket moved to spam</info>', 1, $verbosity);
+		$this->out('<warning>Ticket moved to spam</warning>', 1, $verbosity);
 		return $this->_skip($account, $project, 'tickets', $data);
 	}
 

@@ -33,10 +33,10 @@ class AcceptShell extends SkipShell {
 
 	protected function _preProcess($data, $filename) {
 		$comments = [];
-		$keep = array_flip(['body', 'closed', 'state', 'tag', 'title', 'creator_name', 'user_name', 'milestone_title']);
+		$keep = array_flip(['body', 'title', 'creator_name', 'user_name', 'created_at']);
 		foreach ($data['versions'] as $version) {
 			$comment = array_intersect_key($version, $keep);
-			if (strpos($comment['body'], '[[bulk edit](') === 0) {
+			if (strpos($comment['body'], '[[bulk edit](') === 0 || $comment['body'] === $data['body']) {
 				continue;
 			}
 			$comments[] = $comment;
