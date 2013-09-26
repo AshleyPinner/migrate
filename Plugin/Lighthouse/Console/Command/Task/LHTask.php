@@ -4,8 +4,29 @@ App::uses('Folder', 'Utility');
 
 class LHTask extends Shell {
 
+/**
+ * _source
+ *
+ * Where to read data from, there are several folders used by the shell:
+ *
+ * - export
+ * - renumbered
+ * - accepted
+ * - skipped
+ * - spam
+ *
+ * @var string
+ */
 	protected $_source = 'export/';
 
+/**
+ * load a Lighthouse account dump file
+ *
+ * An account dump file is just a gzipped tar - extract it where we want to use it.
+ *
+ * @param string $sourceGz
+ * @return void
+ */
 	public function load($sourceGz) {
 		$file = basename($sourceGz);
 		$targetGz = $this->_source . $file;
@@ -16,14 +37,41 @@ class LHTask extends Shell {
 		unlink($targetGz);
 	}
 
+/**
+ * projectId
+ *
+ * Determine the project id from (user) input, for the project user/12345-project-name,
+ * Will accept any of:
+ *
+ *  - path/to/type/user/projects/12345-project-name
+ *  - user/12345-project-name
+ *  - user/12345
+ *  - user/project-name
+ *  - 12345
+ *  - project-name
+ *
+ * Returning:
+ *
+ * ['user', '12345-project-name']
+ *
+ * @param string $input
+ * @param string $account
+ * @param bool $warn
+ * @return array
+ */
 	public function projectId($input, $account = null, $warn = true) {
 		if (file_exists($input)) {
-			debug(Debugger::trace());
-			debug ($input);
-			die;
+			preg_match('@([^/]*)/projects/([^/]*)@', $input, $match);
+			if ($match) {
+				$account = $match[1];
+				$project = $match[2];
+			}
+			return [$account, $project];
 		}
+
 		if (strpos($input, '/')) {
 			list($account, $input) = explode('/', $input);
+			return [$account, $project];
 		}
 
 		if (!$account) {
@@ -57,12 +105,31 @@ class LHTask extends Shell {
 		return array(false, false);
 	}
 
+/**
+ * list all accounts
+ *
+ * @return array
+ */
 	public function accounts() {
 		$Folder = new Folder($this->_source);
 		list($accounts) = $Folder->read();
 		return $accounts;
 	}
 
+/**
+ * List all projects
+ *
+ * If an account is specified, only projects in that account are returned, otherwise
+ * all accounts are returned. the format for the return value is:
+ *
+ * [
+ *   'account/12345-project',
+ *   'another-account/456789-another-project'
+ * ]
+ *
+ * @param string $account
+ * @return array
+ */
 	public function projects($account = '*') {
 		if ($account === '*') {
 			$return = array();
@@ -84,6 +151,12 @@ class LHTask extends Shell {
 		return $projects;
 	}
 
+/**
+ * The config for a given project, as provided by lighthouse
+ *
+ * @param string $project
+ * @return array
+ */
 	public function config($project) {
 		list($account, $project) = $this->projectId($project);
 
@@ -106,6 +179,12 @@ class LHTask extends Shell {
 		return array_intersect_key($config, array_flip($keep));
 	}
 
+/**
+ * all ticket (ids) for a given project
+ *
+ * @param string $project
+ * @return array
+ */
 	public function tickets($project) {
 		list($account, $project) = $this->projectId($project);
 
@@ -114,6 +193,12 @@ class LHTask extends Shell {
 		return $tickets;
 	}
 
+/**
+ * all page (ids) for a given project
+ *
+ * @param string $project
+ * @return array
+ */
 	public function pages($project) {
 		list($account, $project) = $this->projectId($project);
 
@@ -122,6 +207,12 @@ class LHTask extends Shell {
 		return $pages;
 	}
 
+/**
+ * all milestones for a given project
+ *
+ * @param string $project
+ * @return array
+ */
 	public function milestones($project) {
 		list($account, $project) = $this->projectId($project);
 
@@ -133,6 +224,13 @@ class LHTask extends Shell {
 		return $milestones;
 	}
 
+/**
+ * Data for a single milestone
+ *
+ * @param string $project
+ * @param string $id
+ * @return array
+ */
 	public function milestone($project, $id) {
 		list($account, $project) = $this->projectId($project);
 		$path = $this->_source . $account . '/projects/' . $project . '/milestones/' . $id;
@@ -140,6 +238,13 @@ class LHTask extends Shell {
 		return current($this->_read($path));
 	}
 
+/**
+ * Data for a single page
+ *
+ * @param string $project
+ * @param string $id
+ * @return array
+ */
 	public function page($project, $id) {
 		list($account, $project) = $this->projectId($project);
 		$path = $this->_source . $account . '/projects/' . $project . '/pages/' . $id;
@@ -147,6 +252,13 @@ class LHTask extends Shell {
 		return current($this->_read($path));
 	}
 
+/**
+ * Data for a single ticket
+ *
+ * @param string $project
+ * @param string $id
+ * @return array
+ */
 	public function ticket($project, $id) {
 		list($account, $project) = $this->projectId($project);
 		$path = $this->_source . $account . '/projects/' . $project . '/tickets/' . $id . '/ticket.json';
@@ -159,6 +271,12 @@ class LHTask extends Shell {
 		return $return;
 	}
 
+/**
+ * set or get the source for lighthouse data
+ *
+ * @param string $source
+ * @return string
+ */
 	public function source($source = null) {
 		if ($source) {
 			$this->_source = rtrim($source, '/') . '/';
@@ -166,6 +284,13 @@ class LHTask extends Shell {
 		return $this->_source;
 	}
 
+/**
+ * Update the stored ticket data
+ *
+ * @param string $project
+ * @param array $data
+ * @return void
+ */
 	public function updateTicket($project, $data) {
 		list($account, $project) = $this->projectId($project);
 		$this->_write($account, $project, 'tickets', $data['ticket']['filename'], $data);
@@ -199,6 +324,27 @@ class LHTask extends Shell {
 		return $File->write($data);
 	}
 
+/**
+ * Get the path to a json file of a specific type
+ *
+ * LH export files store files in the following format:
+ *
+ * account/
+ *   projects/
+ *     9999-project/
+ *       milestones/
+ *         9999-name.json
+ *       pages/
+ *         name.json
+ *       tickets/
+ *         9999-name/ticket.json
+ *
+ * @param string $account
+ * @param string $project
+ * @param string $type
+ * @param string $id
+ * @return string
+ */
 	protected function _path($account, $project, $type, $id) {
 		if ($type === 'tickets') {
 			$id .= '/ticket.json';
