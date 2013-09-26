@@ -27,7 +27,7 @@ App::uses('LighthouseAppModel', 'Lighthouse.Model');
  */
 class LHProject extends LighthouseAppModel {
 
-	public function id($input, $account = null, $warn = true) {
+	public function id($input, $account = null) {
 		if (preg_match('@([^/]*)/projects/([^/]*)@', $input, $match)) {
 			$account = $match[1];
 			$project = $match[2];
@@ -64,10 +64,7 @@ class LHProject extends LighthouseAppModel {
 			}
 		}
 
-		if ($warn) {
-			$this->log(sprintf('Could not find the project %s %s', $account, $input));
-		}
-		return array(false, false);
+		return false;
 	}
 
 	public function load($sourceGz) {
