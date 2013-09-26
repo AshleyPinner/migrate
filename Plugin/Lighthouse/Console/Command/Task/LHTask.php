@@ -4,6 +4,10 @@ App::uses('Folder', 'Utility');
 
 class LHTask extends Shell {
 
+	public $uses = [
+		'Lighthouse.LHProject'
+	];
+
 /**
  * _source
  *
@@ -28,13 +32,7 @@ class LHTask extends Shell {
  * @return void
  */
 	public function load($sourceGz) {
-		$file = basename($sourceGz);
-		$targetGz = $this->_source . $file;
-
-		mkdir(dirname($targetGz), 0777, true);
-		copy($sourceGz, $targetGz);
-		passthru(sprintf("cd %s; tar xvzf %s", escapeshellarg($this->_source), escapeShellarg($file)));
-		unlink($targetGz);
+		$this->LHProject->load($sourceGz);
 	}
 
 /**
@@ -60,43 +58,10 @@ class LHTask extends Shell {
  * @return array
  */
 	public function projectId($input, $account = null, $warn = true) {
-		if (file_exists($input)) {
-			preg_match('@([^/]*)/projects/([^/]*)@', $input, $match);
-			if ($match) {
-				$account = $match[1];
-				$project = $match[2];
-			}
-			return [$account, $project];
-		}
+		$return = $this->LHProject->id($input, $account);
 
-		if (strpos($input, '/')) {
-			list($account, $input) = explode('/', $input);
-			return [$account, $project];
-		}
-
-		if (!$account) {
-			$Folder = new Folder($this->_source . $account);
-			list($folders) = $Folder->read();
-			foreach ($folders as $account) {
-				$return = $this->projectId($input, $account, false);
-				if (array_filter($return)) {
-					return $return;
-				}
-			}
-		} else {
-			$Folder = new Folder($this->_source . $account . '/projects');
-			list($folders) = $Folder->read();
-
-			$len = strlen($input);
-			foreach ($folders as $project) {
-				if (
-					$project === $input ||
-					substr($project, 0, $len) === $input ||
-					substr($project, -$len) === $input
-				) {
-					return array($account, $project);
-				}
-			}
+		if ($return) {
+			return $return;
 		}
 
 		if ($warn) {
