@@ -64,7 +64,7 @@ class ImportShell extends AppShell {
 	}
 
 	public function import($project) {
-		list($account, $project) = $this->LH->projectId($this->args[0]);
+		list($account, $project) = $this->LH->projectId($project);
 
 		$this->_config = Configure::read("Github.projects.$account.$project");
 		if (!$this->_config) {
