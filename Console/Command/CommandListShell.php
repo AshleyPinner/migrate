@@ -24,6 +24,7 @@ class CommandListShell extends AppShell {
 		$this->out('Github functions:', 2);
 		$this->out('<info>Console/cake github.setup</info>');
 		$this->out('<info>Console/cake github.import</info>');
+		$this->out('<info>Console/cake github.reset</info>');
 		$this->hr();
 		$this->out();
 	}
