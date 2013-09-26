@@ -103,10 +103,10 @@ class RenumberShell extends AppShell {
 		}
 		$this->out(sprintf('<info>Processing %s/%s</info>', $account, $project));
 
-		$source = 'export/' . $account . '/projects/' . $project;
+		$source = 'data/export/' . $account . '/projects/' . $project;
 		$fromDir = $source . '/tickets';
 
-		$target = 'renumbered/' . $account . '/projects/' . $project;
+		$target = 'data/renumbered/' . $account . '/projects/' . $project;
 		$toDir = $target . '/tickets';
 		if (!is_dir($toDir)) {
 			mkdir($toDir, 0777, true);
