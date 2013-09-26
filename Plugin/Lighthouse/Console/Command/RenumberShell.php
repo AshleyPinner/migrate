@@ -26,19 +26,17 @@ class RenumberShell extends AppShell {
 		return $parser;
 	}
 
-	public function main($project = null) {
-		$this->settings['n'] = $this->params['no'];
-		$this->settings['y'] = $this->params['yes'];
-
-		if (!$project) {
+	public function main() {
+		$projects = $this->args;
+		if (!$projects) {
 			$projects = $this->LH->projects();
-			foreach ($projects as $project) {
-				$this->main($project);
-			}
-			return;
 		}
 
-		$this->_renumber($project);
+		foreach ($projects as $project) {
+			$this->settings['n'] = $this->params['no'];
+			$this->settings['y'] = $this->params['yes'];
+			$this->_renumber($project);
+		}
 	}
 
 	protected function _linkCommon($source, $target) {
