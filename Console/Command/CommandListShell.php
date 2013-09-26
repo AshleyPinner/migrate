@@ -33,11 +33,10 @@ class CommandListShell extends AppShell {
 		$this->out();
 		$this->out('<info>Lighthouse migration shell</info>', 2);
 
-		$description = 'For help with each command append `--help`.' .
-			' The commands should be called in the order shown, each asks for' .
-			' confirmation before doing anything for your own piece of mind.' .
+		$description =	' The commands should be called in the order shown.' .
 			' To get more information about what the shell is doing, use the' .
-			' `--verbose` flag';
+			' `--verbose` flag. For help with each command append `--help`.';
+
 		$description = wordwrap($description, 63);
 		$this->out($description);
 		$this->hr();
