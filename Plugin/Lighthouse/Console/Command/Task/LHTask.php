@@ -5,7 +5,8 @@ App::uses('Folder', 'Utility');
 class LHTask extends Shell {
 
 	public $uses = [
-		'Lighthouse.LHProject'
+		'Lighthouse.LHProject',
+		'Lighthouse.LHTicket'
 	];
 
 /**
@@ -151,11 +152,8 @@ class LHTask extends Shell {
  * @return array
  */
 	public function tickets($project) {
-		list($account, $project) = $this->projectId($project);
-
-		$Folder = new Folder($this->_source . $account . '/projects/' . $project . '/tickets');
-		list($tickets) = $Folder->read();
-		return $tickets;
+		$this->LHTicket->project($project);
+		return $this->LHTicket->data($id);
 	}
 
 /**
@@ -225,15 +223,8 @@ class LHTask extends Shell {
  * @return array
  */
 	public function ticket($project, $id) {
-		list($account, $project) = $this->projectId($project);
-		$path = $this->_source . $account . '/projects/' . $project . '/tickets/' . $id . '/ticket.json';
-
-		$return = $this->_read($path);
-
-		if ($this->_source !== 'accepted/') {
-			$return = current($return);
-		}
-		return $return;
+		$this->LHTicket->project($project);
+		return $this->LHTicket->data($id);
 	}
 
 /**
