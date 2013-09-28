@@ -26,7 +26,7 @@ class AcceptShell extends SkipShell {
 		}
 
 		$comments = [];
-		$keep = array_flip(['body', 'title', 'creator_name', 'user_name', 'created_at']);
+		$keep = array_flip(['body', 'title', 'user_name', 'created_at']);
 		foreach ($data['versions'] as $version) {
 			$comment = array_intersect_key($version, $keep);
 			if (
