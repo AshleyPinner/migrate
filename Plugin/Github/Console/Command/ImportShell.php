@@ -147,7 +147,7 @@ class ImportShell extends AppShell {
 			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_config['users'][$author]);
 		}
 
-		$data['body'] = sprintf("**%s** commented, %s:\n", $author, date('jS M Y', strtotime($comment['created_at']))) .
+		$data['body'] = sprintf("**%s** said, %s:\n", $author, date('jS M Y', strtotime($comment['created_at']))) .
 			"- - - -\n" .
 			"\n" .
 			$data['body'];
@@ -169,9 +169,8 @@ class ImportShell extends AppShell {
 		if (!empty($this->_config['users'][$author])) {
 			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_config['users'][$author]);
 		}
-		$data['body'] = sprintf("Created by **%s**\n", $author) .
-			sprintf("On <time datetime='%s'>%s</time>\n", $ticket['created_at'], date('jS M Y', strtotime($ticket['created_at']))) .
-			sprintf("*(originally [Lighthouse ticket #%s](%s))*\n", $ticket['id'], $ticket['link']) .
+		$data['body'] = sprintf("Created by **%s**, %s. ", $author, date('jS M Y', strtotime($ticket['created_at']))) .
+			sprintf("*(originally [Lighthouse ticket #%s](%s))*:\n", $ticket['id'], $ticket['link']) .
 			"- - - -\n" .
 			"\n" .
 			$data['body'];
