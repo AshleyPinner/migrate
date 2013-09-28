@@ -88,6 +88,9 @@ class ImportShell extends AppShell {
 
 			if (empty($data['github'])) {
 				$data = $this->_createTicket($id, $data);
+				if (!$data) {
+					continue;
+				}
 			}
 
 			$this->_createComments($id, $data);
@@ -100,7 +103,7 @@ class ImportShell extends AppShell {
 			'title' => $ticket['title'],
 			'body' => $ticket['body'],
 			'milestone' => $ticket['milestone'],
-			'labels' => explode(' ', $ticket['tag'])
+			'labels' => $this->_deriveTags($ticket['tag'])
 		];
 
 		$toCreate = $this->_prepareTicketBody($toCreate, $ticket);
@@ -239,5 +242,34 @@ class ImportShell extends AppShell {
 		}
 
 		return $data;
+	}
+
+/**
+ * _deriveTags
+ *
+ * Account for the way lighthouse returns tags as a string of the format:
+ *   foo "multi word tag" bar BAR
+ *
+ * And permitting duplicate tags that differ only by case
+ *
+ * @param string $input
+ * @return array
+ */
+	protected function _deriveTags($input) {
+		$tags = [];
+
+		if (preg_match_all('@"(.+)"@', $input, $matches)) {
+			$tags = $matches[1];
+			$input = str_replace($matches[0], '', $input);
+		}
+
+		$tags = array_merge(
+			$matches[1],
+			array_filter(explode(' ', $input))
+		);
+		$tags = array_unique(array_map('strtolower', $tags));
+		sort($tags);
+
+		return $tags;
 	}
 }
