@@ -25,8 +25,19 @@ class ResetShell extends AppShell {
 
 		$projects = $this->args;
 		foreach ($projects as $project) {
+			$this->config($project);
 			$this->tickets($project);
 		}
+	}
+
+	public function config($project) {
+		list($account, $project) = $this->LHProject->project($project);
+
+		Configure::load('github');
+		$config = Configure::read('Github');
+		unset($config['projects'][$account][$project]['labels']);
+		unset($config['projects'][$account][$project]['milestones']);
+		$this->_dump('github', $config);
 	}
 
 	public function tickets($project) {
