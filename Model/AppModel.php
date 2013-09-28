@@ -1,7 +1,94 @@
 <?php
-class AppModel extends Model {
+class AppModel extends Object {
 
-	public $useTable = false;
+/**
+ * The type of data this model refers to
+ *
+ *  Valid values:
+ * 	  milestones
+ * 	  pages
+ * 	  projects
+ * 	  tickets
+ *
+ * @var string
+ */
+	protected $_type;
+
+/**
+ * __construct
+ *
+ * Set the _type property derived from the class name if not set explicitly
+ *
+ * @param array $params
+ */
+	public function __construct($params = []) {
+		$params += ['type' => Inflector::pluralize(strtolower(substr(get_class($this), 2)))];
+		$this->_type = $params['type'];
+	}
+
+/**
+ * list all of this type for the given project
+ *
+ * If no project is specified, the current project is used
+ * Returns a list of item ids
+ *
+ * @param string $project
+ * @return array
+ */
+	public function all($project = null) {
+		list($account, $project) = $this->project($project);
+
+		$Folder = new Folder($this->source() . $account . '/projects/' . $project . '/' . $this->_type);
+		list($void, $return) = $Folder->read();
+		return $return;
+	}
+
+	public function data($id, $project = null) {
+		list($account, $project) = $this->project($project);
+
+		$return = $this->_read($id);
+		if ($this->source() !== 'data/accepted/') {
+			$return = current($return);
+		}
+		return $return;
+	}
+
+/**
+ * is this item $what?
+ *
+ * @param string $id
+ * @param string $what accepted, skipped, spam
+ * @return bool
+ */
+	public function is($id, $what) {
+		$path = $this->_path($id, true);
+		$path = preg_replace('@data/[^/]*@', 'data/' . $what, $path);
+		return file_exists($path);
+	}
+
+/**
+ * get or set the current project
+ *
+ * @throws CakeException if the account/project is not defined or cannot be determinted
+ * @param string $input
+ * @return array
+ */
+	public function project($input = null) {
+		if ($input) {
+			if (!isset($this->LHProject)) {
+				$this->LHProject = ClassRegistry::init('Lighthouse.LHProject');
+			}
+			$this->LHProject->setId($input);
+		}
+
+		$account = Configure::read('LH.account');
+		$project = Configure::read('LH.project');
+		if (!$account || !$project) {
+			throw new CakeException('Account or project hasn\'t been set up yet');
+		}
+
+		return [$account, $project];
+	}
 
 /**
  * Where to read data from, there are several folders used by the shell:
@@ -26,25 +113,73 @@ class AppModel extends Model {
 		return $return;
 	}
 
-	public function project($input = null) {
-		if ($input) {
-			if ($this->name === 'LHProject') {
-				list($account, $project) = $this->id($input);
-			} else {
-				list($account, $project) = $this->Project->id($input);
-			}
+/**
+ * Get the path to a json file of a specific type
+ *
+ * LH export files store files in the following format:
+ *
+ * account/
+ *   projects/
+ *     9999-project/
+ *       milestones/
+ *         9999-name.json
+ *       pages/
+ *         name.json
+ *       tickets/
+ *         9999-name/ticket.json
+ *
+ * @param string $id
+ * @return string
+ */
+	protected function _path($id, $full = false) {
+		list($account, $project) = $this->project();
+		$type = $this->_type;
+		$return = "$account/projects/$project/$type/$id";
 
-			Configure::write('LH.account', $account);
-			Configure::write('LH.project', $project);
+		if ($full) {
+			return $this->source() . $return;
+		}
+	}
+
+/**
+ * read by id
+ *
+ * The id is the filename, except for tickets where it is a folder name
+ *
+ * @throws CakeException if the file doesn't exist
+ * @param string $id
+ * @return array
+ */
+	protected function _read($id) {
+		$path = $this->_path($id, true);
+
+		if (!file_exists($path)) {
+			throw new CakeException(sprintf('The file %s doesn\'t exist', $path));
 		}
 
-		$account = Configure::read('LH.account');
-		$project = Configure::read('LH.project');
-		if (!$account || !$project) {
-			throw new CakeException('Account or project hasn\'t been set up yet');
-		}
+		return json_decode(file_get_contents($path), true);
+	}
 
-		return [$account, $project];
+/**
+ * write by id
+ *
+ * The id is the filename, except for tickets where it is a folder name
+ *
+ * @param string $id
+ * @param array $data
+ * @return bool
+ */
+	protected function _write($id, $data) {
+		$path = $this->_path($id);
+		$File = new File($path, true);
+
+		if (!is_string($data)) {
+			$data = json_encode(
+				$data,
+				JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+			);
+		}
+		return $File->write($data);
 	}
 
 }
