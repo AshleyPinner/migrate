@@ -2,32 +2,9 @@
 
 class ResetShell extends AppShell {
 
-/**
- * Current account
- *
- * @var string
- */
-	protected $_account;
-
-/**
- * Current project
- *
- * @var string
- */
-	protected $_project;
-
-	protected $_config = [];
-
-	protected $_path = 'accepted/';
-
-	protected $_labels = [];
-
-	protected $_milestones = [];
-
-	protected $_users = [];
-
-	public $tasks = [
-		'Lighthouse.LH',
+	public $uses = [
+		'Lighthouse.LHProject',
+		'Lighthouse.LHTicket',
 	];
 
 	public function getOptionParser() {
@@ -44,53 +21,54 @@ class ResetShell extends AppShell {
 	}
 
 	public function main() {
-		$this->LH->source('accepted');
+		$this->LHProject->source('accepted');
 
-		if (!$this->args) {
-			$this->args = $this->LH->projects();
-		}
-
-		foreach ($this->args as $project) {
-			$this->reset($project);
+		$projects = $this->args;
+		foreach ($projects as $project) {
+			$this->tickets($project);
 		}
 	}
 
-	public function reset($project) {
-		list($account, $project) = $this->LH->projectId($project);
+	public function tickets($project) {
+		list($account, $project) = $this->LHProject->project($project);
+		$this->out(sprintf('Processing %s/%s', $account, $project));
 
-		$pid = "$account/$project";
-		$tickets = $this->LH->tickets($pid);
-		foreach ($tickets as $id) {
-			$data = $this->LH->ticket($pid, $id);
+		foreach ($this->LHTicket->all() as $id) {
+			$this->ticket($id);
+		}
+	}
 
-			if (!$data) {
-				$this->out(sprintf('<error>Skipping invalid ticket with id %s</error>', $id));
-				continue;
-			}
+	public function ticket($id) {
+		$data = $this->LHTicket->data($id);
 
-			$update = false;
-			if (isset($data['github'])) {
+		if (!$data) {
+			$this->out(sprintf('<error>Skipping invalid ticket with id %s</error>', $id));
+			continue;
+		}
+
+		$update = false;
+		if (isset($data['github'])) {
+			$update = true;
+			unset($data['github']);
+		}
+
+		foreach ($data['comments'] as &$comment) {
+			if (isset($comment['github'])) {
 				$update = true;
-				unset($data['github']);
-			}
-
-			foreach ($data['comments'] as &$comment) {
-				if (isset($comment['github'])) {
-					$update = true;
-					unset($comment['github']);
-				}
-			}
-
-			if ($update) {
-				$this->out(sprintf('Removing github data from %s ticket %s: %s', $pid, $data['ticket']['id'], $data['ticket']['title']));
-				$this->LH->updateTicket($pid, $data);
-			} else {
-				$this->out(
-					sprintf('No github data found for %s ticket %s: %s', $pid, $data['ticket']['id'], $data['ticket']['title']),
-					1,
-					Shell::VERBOSE
-				);
+				unset($comment['github']);
 			}
 		}
+
+		if ($update) {
+			$this->out(sprintf('Removing github data from ticket %s: %s', $data['ticket']['id'], $data['ticket']['title']));
+			return $this->LHTicket->update($id, $data);
+		}
+
+		$this->out(
+			sprintf('No github data found for ticket %s: %s', $data['ticket']['id'], $data['ticket']['title']),
+			1,
+			Shell::VERBOSE
+		);
+		return false;
 	}
 }
