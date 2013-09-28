@@ -124,11 +124,9 @@ class LHTask extends Shell {
  * @return array
  */
 	public function config($project) {
-		list($account, $project) = $this->projectId($project);
+		list($account, $project) = $this->LHProject->id($project);
 
-		$path = $this->_source . $account . '/projects/' . $project . '/project.json';
-
-		$config = current($this->_read($path));
+		$config = $this->LHProject->data($project);
 
 		$config['open_states_list'] = explode(',', $config['open_states_list']);
 		$config['closed_states_list'] = explode(',', $config['closed_states_list']);
@@ -153,7 +151,7 @@ class LHTask extends Shell {
  */
 	public function tickets($project) {
 		$this->LHTicket->project($project);
-		return $this->LHTicket->data($id);
+		return $this->LHTicket->all();
 	}
 
 /**
@@ -250,20 +248,6 @@ class LHTask extends Shell {
 	public function updateTicket($project, $data) {
 		list($account, $project) = $this->projectId($project);
 		$this->_write($account, $project, 'tickets', $data['ticket']['filename'], $data);
-	}
-
-/**
- * _read
- *
- * @throws CakeException if the file doesn't exist
- * @param mixed $path
- * @return void
- */
-	protected function _read($path) {
-		if (!file_exists($path)) {
-			throw new CakeException(sprintf('The file %s doesn\'t exist', $path));
-		}
-		return json_decode(file_get_contents($path), true);
 	}
 
 	protected function _write($account, $project, $type, $id, $data) {

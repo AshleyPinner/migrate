@@ -4,6 +4,11 @@ class SkipShell extends AppShell {
 
 	public $tasks = ['Lighthouse.LH'];
 
+	public $uses = [
+		'Lighthouse.LHProject',
+		'Lighthouse.LHTicket'
+	];
+
 	public $settings = [
 		'open' => false,
 		'closed' => false
@@ -28,7 +33,8 @@ class SkipShell extends AppShell {
 		return $parser;
 	}
 
-	public function main($project = null) {
+	public function main() {
+
 		$this->settings['open'] = $this->params['open'];
 		$this->settings['closed'] = $this->params['closed'];
 
@@ -36,95 +42,58 @@ class SkipShell extends AppShell {
 			return $this->out($this->getOptionParser()->help());
 		}
 
-		if (!$project) {
-			$settings = $this->settings;
-			$this->LH->source('renumbered');
-			$projects = $this->LH->projects();
-			foreach ($projects as $project) {
-				$this->settings = $settings;
-				$this->main($project);
-			}
-			return;
+		$this->LHProject->source('renumbered');
+
+		$projects = $this->args;
+		if (!$projects) {
+			$projects = $this->LHProject->all();
 		}
 
-		$this->settings += $this->LH->config($project);
-		$this->tickets($project);
+		foreach ($projects as $project) {
+			$this->processTickets($project);
+		}
 	}
 
-	public function tickets($project) {
-		$settings = $this->settings;
-
+	public function processTickets($project) {
+		$this->out(sprintf('<info>Processing %s</info>', $project));
 		$tickets = $this->LH->tickets($project);
 		foreach ($tickets as $ticket) {
-			$this->ticket($project, $ticket);
+			$this->processTicket($ticket);
 		}
-
-		$this->settings = $settings;
 	}
 
-	public function ticket($project, $id) {
-		$type = 'tickets';
-		list($account, $project) = $this->LH->projectId($project);
-		$path = $this->_path($account, $project, $type, $id);
-		$isSkipped = $this->_isSkipped($path);
-		$isAccepted = $this->_isAccepted($path);
+	public function processTicket($id) {
+		$isSkipped = $this->LHTicket->is($id, 'skipped');
+		$isAccepted = $this->LHTicket->is($id, 'accepted');
+		$isSpam = $this->LHTicket->is($id, 'spam');
 
-		if ($isSkipped || $isAccepted) {
-			$what = $isAccepted ? 'accepted' : 'skipped';
-			$this->out("Skipping $path, already $what", 1, Shell::VERBOSE);
+		$data = $this->LHTicket->data($id);
+		$status = $this->LHTicket->status($id);
+		$number = $data['ticket']['number'];
+		$title = $data['ticket']['title'];
+
+		if ($isSkipped || $isAccepted || $isSpam) {
+			$what = $isAccepted ? 'accepted' : ($isSkipped ? 'skipped' : 'marked as spam');
+			$this->out("<comment>Skipping ticket $number: $title, already $what</comment>", 1, Shell::VERBOSE);
 			return;
 		}
 
-		$data = $this->LH->ticket($project, $id);
-
-		$isOpen = $isClosed = false;
-		$state = $data['state'];
-		if (in_array($state, $this->settings['open_states_list'])) {
-			$isOpen = true;
-		}
-		if (in_array($state, $this->settings['closed_states_list'])) {
-			$isClosed = true;
-		}
-
-		$accept = null;
 		if (
-			($this->settings['open'] && $isOpen) ||
-			($this->settings['closed'] && $isClosed)
+			($this->settings['open'] && $status === 'open') ||
+			($this->settings['closed'] && $status === 'closed')
 		) {
-			$accept = true;
+			$this->out("Processing ticket $number: $title");
+			if ($this->name === 'Accept') {
+				$this->LHProject->source('accepted');
+			} else {
+				$this->LHProject->source('skipped');
+			}
+			$this->LHTicket->update($id, $data);
+			$this->LHProject->source('renumbered');
+			return;
 		}
 
-		if ($accept === true) {
-			return $this->_write($account, $project, $type, $id, $data);
-		}
+		$this->out("<comment>Skipping ticket $number: $title, ticket is $status</comment>", 1, Shell::VERBOSE);
+		return false;
 	}
-
-	protected function _write($account, $project, $type, $id, $data) {
-		$path = $this->_path($account, $project, $type, $id);
-
-		$path = $this->_pathPrefix . $path;
-		$this->out("Writing $path");
-
-		$File = new File($path, true);
-		if (!is_string($data)) {
-			$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-		}
-		return $File->write($data);
-	}
-
-	protected function _isSkipped($path) {
-		return file_exists('skipped/' . $path);
-	}
-
-	protected function _isAccepted($path) {
-		return file_exists('accepted/' . $path);
-	}
-
-	protected function _path($account, $project, $type, $id) {
-		if ($type === 'tickets') {
-			$id .= '/ticket.json';
-		}
-		return "$account/projects/$project/$type/$id";
-	}
-
 }

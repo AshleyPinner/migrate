@@ -43,6 +43,13 @@ class AppModel extends Object {
 		return $return;
 	}
 
+/**
+ * get all data by id
+ *
+ * @param string $id
+ * @param string $project
+ * @return array
+ */
 	public function data($id, $project = null) {
 		list($account, $project) = $this->project($project);
 
@@ -114,6 +121,17 @@ class AppModel extends Object {
 	}
 
 /**
+ * update by id
+ *
+ * @param string $id
+ * @param string $project
+ * @return array
+ */
+	public function update($id, array $data) {
+		return $this->_write($id, $data);
+	}
+
+/**
  * Get the path to a json file of a specific type
  *
  * LH export files store files in the following format:
@@ -170,7 +188,8 @@ class AppModel extends Object {
  * @return bool
  */
 	protected function _write($id, $data) {
-		$path = $this->_path($id);
+		$path = $this->_path($id, true);
+
 		$File = new File($path, true);
 
 		if (!is_string($data)) {

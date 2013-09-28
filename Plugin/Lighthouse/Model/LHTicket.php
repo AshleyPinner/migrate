@@ -5,27 +5,54 @@ App::uses('LighthouseAppModel', 'Lighthouse.Model');
 
 class LHTicket extends LighthouseAppModel {
 
-	public $belongsTo = [
-		'Lighthouse.LHProject'
-	];
-
-	public function all() {
-		list($account, $project) = $this->project();
-
-		$Folder = new Folder($this->source() . $account . '/projects/' . $project . '/tickets');
-		list($tickets) = $Folder->read();
-		return $tickets;
+	public function __construct($params = []) {
+		$this->LHProject = ClassRegistry::init('Lighthouse.LHProject');
+		parent::__construct($params);
 	}
 
-	public function data($id) {
-		list($account, $project) = $this->projectId($project);
-		$path = $this->source() . $account . '/projects/' . $project . '/tickets/' . $id . '/ticket.json';
+	public function all($project = null) {
+		list($account, $project) = $this->project($project);
 
-		$return = $this->_read($path);
-
-		if ($this->source() !== 'data/accepted/') {
-			$return = current($return);
-		}
+		$Folder = new Folder($this->source() . $account . '/projects/' . $project . '/' . $this->_type);
+		list($return) = $Folder->read();
 		return $return;
+	}
+
+
+
+	public function data($id, $project = null) {
+		list($account, $project) = $this->project($project);
+
+		$return = $this->_read($id);
+		if (!$return) {
+			return false;
+		}
+
+		return $return;
+	}
+
+	public function status($id, $project = null) {
+		$config = $this->LHProject->config();
+
+		$data = $this->data($id, $project);
+		$state = $data['ticket']['state'];
+
+		$return = null;
+		if (in_array($state, $config['open_states_list'])) {
+			$return = 'open';
+		} elseif (in_array($state, $config['closed_states_list'])) {
+			$return = 'closed';
+		}
+
+		return $return;
+	}
+
+	protected function _read($id) {
+		$return = parent::_read($id);
+		return $return;
+	}
+
+	protected function _path($id, $full = false) {
+		return parent::_path($id, $full) . '/ticket.json';
 	}
 }
