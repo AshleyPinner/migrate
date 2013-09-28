@@ -6,8 +6,8 @@ class SetupShell extends AppShell {
 
 	protected $_config = [];
 
-	public $tasks = [
-		'Lighthouse.LH',
+	public $uses = [
+		'Lighthouse.LHProject',
 	];
 
 	public function getOptionParser() {
@@ -60,13 +60,14 @@ class SetupShell extends AppShell {
 	}
 
 	public function projects() {
-		$this->LH->source('accepted');
-		foreach ($this->LH->projects() as $name) {
-			list($account, $project) = $this->LH->projectId($name);
+		$this->LHProject->source('accepted');
+		foreach ($this->LHProject->all() as $id) {
+			list($account, $project) = $this->LHProject->project($id);
+
 			if (isset($this->_config['projects'][$account][$project])) {
 				$ghProject = $this->_config['projects'][$account][$project]['account'] . '/' .
 					$this->_config['projects'][$account][$project]['project'];
-				$this->out(sprintf('Skipping %s, already mapped to github project %s', $name, $ghProject), 1, Shell::VERBOSE);
+				$this->out(sprintf('Skipping %s, already mapped to github project %s', $id, $ghProject), 1, Shell::VERBOSE);
 				continue;
 			}
 
