@@ -2,7 +2,7 @@
 
 class RenumberShell extends AppShell {
 
-	public $tasks = ['Lighthouse.LH'];
+	public $uses = ['Lighthouse.LHProject'];
 
 	public function getOptionParser() {
 		$parser = parent::getOptionParser();
@@ -16,12 +16,11 @@ class RenumberShell extends AppShell {
 	public function main() {
 		$projects = $this->args;
 		if (!$projects) {
-			$projects = $this->LH->projects();
+			$projects = $this->LHProject->all();
 		}
 
 		foreach ($projects as $project) {
-			$this->LH->LHProject->project($project);
-			$this->LH->LHProject->renumber();
+			$this->LHProject->renumber($project);
 		}
 	}
 }

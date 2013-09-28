@@ -2,8 +2,6 @@
 
 class SkipShell extends AppShell {
 
-	public $tasks = ['Lighthouse.LH'];
-
 	public $uses = [
 		'Lighthouse.LHProject',
 		'Lighthouse.LHTicket'
@@ -53,7 +51,7 @@ class SkipShell extends AppShell {
 
 	public function processTickets($project) {
 		$this->out(sprintf('<info>Processing %s</info>', $project));
-		$tickets = $this->LH->tickets($project);
+		$tickets = $this->LHTicket->all($project);
 		foreach ($tickets as $ticket) {
 			$this->processTicket($ticket);
 		}

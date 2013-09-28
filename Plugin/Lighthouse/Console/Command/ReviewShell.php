@@ -2,8 +2,6 @@
 
 class ReviewShell extends AppShell {
 
-	public $tasks = ['Lighthouse.LH'];
-
 	public $uses = [
 		'Lighthouse.LHProject',
 		'Lighthouse.LHTicket'
@@ -60,8 +58,7 @@ class ReviewShell extends AppShell {
 
 		$tickets = $this->LHTicket->all($project);
 		foreach ($tickets as $id) {
-			$this->ticket($id);
-			$data = $this->LH->ticket($project, $id);
+			$data = $this->LHTicket->data($id);
 			if (!$data['comments']) {
 				$this->out(sprintf('<info>No comments for %s</info>', $data['ticket']['title']), Shell::VERBOSE);
 				continue;

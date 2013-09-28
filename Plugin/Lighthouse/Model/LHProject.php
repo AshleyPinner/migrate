@@ -176,8 +176,8 @@ class LHProject extends LighthouseAppModel {
  *
  * Also links unmodified files so that the renumbered data is a complete copy of the export data
  */
-	public function renumber() {
-		list($account, $project) = $this->project();
+	public function renumber($project = null) {
+		list($account, $project) = $this->project($project);
 
 		$this->log(sprintf('Processing %s/%s', $account, $project), LOG_INFO);
 
