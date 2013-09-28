@@ -1,0 +1,9 @@
+{
+   "project" : {
+      "open_states_list" : "new,open,hold",
+      "id" : 45678,
+      "name" : "Our Project Name",
+      "description" : "Our project description",
+      "closed_states_list" : "resolved,invalid,duplicate,works-for-me,wont-fix"
+   }
+}
