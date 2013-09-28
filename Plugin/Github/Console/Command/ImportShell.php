@@ -150,7 +150,7 @@ class ImportShell extends AppShell {
 			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_config['users'][$author]);
 		}
 
-		$data['body'] = sprintf("**%s** said, %s:\n", $author, date('jS M Y', strtotime($comment['created_at']))) .
+		$data['body'] = sprintf("%s, **%s** said:\n", date('jS M Y', strtotime($comment['created_at'])), $author) .
 			"- - - -\n" .
 			"\n" .
 			$data['body'];
@@ -203,8 +203,25 @@ class ImportShell extends AppShell {
 			$toCreate = [
 				'title' => $milestone
 			];
-			$result = $this->client()->api('issue')->milestones()
-				->create($this->_projectConfig['account'], $this->_projectConfig['project'], $toCreate);
+
+			try {
+				$result = $this->client()->api('issue')->milestones()
+					->create($this->_projectConfig['account'], $this->_projectConfig['project'], $toCreate);
+			} catch (Github\Exception\ValidationFailedException $e) {
+				$message = $e->getMessage();
+				if (strpos($message, 'already exists')) {
+					// the milestone already exists - handle silently
+					$response = $this->client()->api('issue')->milestones()
+						->all($this->_projectConfig['account'], $this->_projectConfig['project']);
+					$this->_projectConfig['milestones'] = Hash::combine($response, '{n}.title', '{n}.number');
+					$this->_dump('github', $this->_config);
+					$data['milestone'] = $this->_projectConfig['milestones'][$milestone];
+
+					return $data;
+				} else {
+					throw $e;
+				}
+			}
 			$this->_projectConfig['milestones'][$milestone] = $result['number'];
 			$this->_dump('github', $this->_config);
 		}
@@ -233,8 +250,18 @@ class ImportShell extends AppShell {
 				$toCreate = [
 					'name' => $label
 				];
-				$result = $this->client()->api('issue')->labels()
-					->create($this->_projectConfig['account'], $this->_projectConfig['project'], $toCreate);
+
+				try {
+					$result = $this->client()->api('issue')->labels()
+						->create($this->_projectConfig['account'], $this->_projectConfig['project'], $toCreate);
+				} catch (Github\Exception\ValidationFailedException $e) {
+					$message = $e->getMessage();
+					if (strpos($message, 'already exists')) {
+						// the label already exists - handle silently
+					} else {
+						throw $e;
+					}
+				}
 
 				$this->_projectConfig['labels'][$label] = $label;
 				$this->_dump('github', $this->_config);
