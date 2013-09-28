@@ -117,7 +117,7 @@ class AppModel extends Object {
 		if (!$return) {
 			return $this->source('export');
 		}
-		return basename($return);
+		return $return;
 	}
 
 /**
