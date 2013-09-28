@@ -1,13 +1,9 @@
 <?php
 class LoadShell extends AppShell {
 
-	public $tasks = [
-		'Lighthouse.LH'
+	public $uses = [
+		'Lighthouse.LHProject'
 	];
-
-	public function main() {
-		$this->LH->load($this->args[0]);
-	}
 
 	public function getOptionParser() {
 		$parser = Shell::getOptionParser();
@@ -21,4 +17,9 @@ class LoadShell extends AppShell {
 
 		return $parser;
 	}
+
+	public function main() {
+		$this->LHProject->load($this->args[0]);
+	}
+
 }

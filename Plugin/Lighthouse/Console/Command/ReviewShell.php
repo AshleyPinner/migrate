@@ -2,7 +2,10 @@
 
 class ReviewShell extends AppShell {
 
-	public $tasks = ['Lighthouse.LH'];
+	public $uses = [
+		'Lighthouse.LHProject',
+		'Lighthouse.LHTicket'
+	];
 
 	public $settings = [
 		'accept' => null,
@@ -21,28 +24,31 @@ class ReviewShell extends AppShell {
 		return $parser;
 	}
 
-	public function main($project = null) {
-		if (!$project) {
-			if (!$this->_config && file_exists('Config/lighthouse.php')) {
-				Configure::load('lighthouse');
-				$this->_config = (array)Configure::read('Lighthouse');
+	public function main() {
+		if (!$this->_config && file_exists('Config/lighthouse.php')) {
+			Configure::load('lighthouse');
+			$this->_config = (array)Configure::read('Lighthouse');
+		}
+		foreach (['users', 'spammers', 'whitelist'] as $key) {
+			if (!isset($this->_config[$key])) {
+				$this->_config[$key] = [];
 			}
-			foreach (['users', 'spammers', 'whitelist'] as $key) {
-				if (!isset($this->_config[$key])) {
-					$this->_config[$key] = [];
-				}
-			}
-
-			$settings = $this->settings;
-			$this->LH->source('accepted');
-			$projects = $this->LH->projects();
-			foreach ($projects as $project) {
-				$this->settings = $settings;
-				$this->main($project);
-			}
-			return;
 		}
 
+		$this->LHProject->source('accepted');
+		$projects = $this->args;
+		if (!$projects) {
+			$projects = $this->LHProject->all();
+		}
+
+		$settings = $this->settings;
+		foreach ($projects as $project) {
+			$this->settings = $settings;
+			$this->project($project);
+		}
+	}
+
+	public function project($project) {
 		$this->tickets($project);
 		$this->comments($project);
 	}
@@ -50,15 +56,19 @@ class ReviewShell extends AppShell {
 	public function comments($project) {
 		$settings = $this->settings;
 
-		$tickets = $this->LH->tickets($project);
+		$tickets = $this->LHTicket->all($project);
 		foreach ($tickets as $id) {
-			$data = $this->LH->ticket($project, $id);
+			$data = $this->LHTicket->data($id);
+			if (!$data['comments']) {
+				$this->out(sprintf('<info>No comments for %s</info>', $data['ticket']['title']), Shell::VERBOSE);
+				continue;
+			}
 
 			$this->out(sprintf('Reviewing comments for %s', $data['ticket']['title']));
 
 			$updated = false;
 			foreach ($data['comments'] as $i => $comment) {
-				if (!$this->comment($project, $comment, $data)) {
+				if (!$this->comment($id, $comment, $data)) {
 					unset ($data['comments'][$i]);
 					$data['spam'][$i] = $comment;
 					$updated = true;
@@ -67,15 +77,14 @@ class ReviewShell extends AppShell {
 
 			if ($updated) {
 				$this->out(sprintf('<info>Updating ticket %s %s, removing spam comment(s)</info>', $data['ticket']['id'], $data['ticket']['title']));
-				list($account, $pid) = $this->LH->projectId($project);
-				$this->_update($account, $pid, 'tickets', $data);
+				$this->LHTicket->update($id, $data);
 			}
 		}
 
 		$this->settings = $settings;
 	}
 
-	public function comment($project, $comment, $data) {
+	public function comment($idt, $comment, $data) {
 		$creator = $comment['user_name'];
 
 		$accept = false;
@@ -123,17 +132,16 @@ class ReviewShell extends AppShell {
 	public function tickets($project) {
 		$settings = $this->settings;
 
-		$tickets = $this->LH->tickets($project);
+		$tickets = $this->LHTicket->all($project);
 		foreach ($tickets as $id) {
-			$data = $this->LH->ticket($project, $id);
-			$this->ticket($project, $data);
+			$this->ticket($id);
 		}
 
 		$this->settings = $settings;
 	}
 
-	public function ticket($project, $data) {
-		list($account, $project) = $this->LH->projectId($project);
+	public function ticket($id) {
+		$data = $this->LHTicket->data($id);
 
 		$creator = $data['ticket']['created_by'];
 
@@ -174,62 +182,19 @@ class ReviewShell extends AppShell {
 			$this->out('<info>Ticket accepted</info>', 1, $verbosity);
 			return;
 		}
+		$this->_markTicketAsSpam($id, $verbosity);
+	}
+
+	protected function _markTicketAsSpam($id, $verbosity) {
+		$path = $this->LHTicket->path($id, true);
+		$spamPath = str_replace('accepted', 'spam', $path);
+
+		$File = new File($spamPath, true);
+		$File->copy($path);
+		unlink($path);
+		rmdir(dirname($path));
 
 		$this->out('<warning>Ticket moved to spam</warning>', 1, $verbosity);
-		return $this->_skip($account, $project, 'tickets', $data);
 	}
 
-	protected function _skip($account, $project, $type, $data) {
-		$id = $data['ticket']['filename'];
-		$path = $this->_path($account, $project, $type, $id);
-
-		if (file_exists('accepted/' . $path)) {
-			unlink('accepted/' . $path);
-			rmdir('accepted/' . dirname($path));
-		}
-
-		$File = new File('spam/' . $path, true);
-		if (!is_string($data)) {
-			$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-		}
-		return $File->write($data);
-	}
-
-	protected function _update($account, $project, $type, $data) {
-		$id = $data['ticket']['filename'];
-		$path = $this->_path($account, $project, $type, $id);
-
-		$File = new File('accepted/' . $path, true);
-		if (!is_string($data)) {
-			$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-		}
-		return $File->write($data);
-	}
-
-	protected function _path($account, $project, $type, $id) {
-		if ($type === 'tickets') {
-			$id .= '/ticket.json';
-		}
-		return "$account/projects/$project/$type/$id";
-	}
-
-	protected function _dump($name, array $data) {
-		$filename = strtolower($name);
-		$name = ucfirst($filename);
-
-		if ($data === Configure::read($name)) {
-			$this->out(sprintf('No changes made to %s config', $name), 1, Shell::VERBOSE);
-			return false;
-		}
-		Configure::write($name, $data);
-
-		$this->out(sprintf('<info>Updating %s config</info>', $name, $filename), 1, Shell::VERBOSE);
-
-		$string = "<?php\n\n\$config = ['$name' => " . var_export($data, true) . "];\n";
-
-		$File = new File("Config/$filename.php", true);
-		$File->write($string);
-
-		return $name;
-	}
 }

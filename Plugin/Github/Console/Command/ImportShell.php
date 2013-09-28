@@ -3,32 +3,15 @@ App::uses('Folder', 'Utility');
 
 class ImportShell extends AppShell {
 
-/**
- * Current account
- *
- * @var string
- */
-	protected $_account;
-
-/**
- * Current project
- *
- * @var string
- */
-	protected $_project;
+	protected $_client;
 
 	protected $_config = [];
 
-	protected $_path = 'accepted/';
+	protected $_projectConfig = [];
 
-	protected $_labels = [];
-
-	protected $_milestones = [];
-
-	protected $_users = [];
-
-	public $tasks = [
-		'Lighthouse.LH',
+	public $uses = [
+		'Lighthouse.LHProject',
+		'Lighthouse.LHTicket',
 	];
 
 	public function getOptionParser() {
@@ -44,84 +27,111 @@ class ImportShell extends AppShell {
 		return $parser;
 	}
 
+	public function client($client = null) {
+		if ($client) {
+			$this->_client = $client;
+		}
+
+		if (empty($this->_client)) {
+			$this->_client = new Github\Client();
+			$this->_client
+				->authenticate($this->_config['token'], '', Github\Client::AUTH_HTTP_TOKEN);
+		}
+
+		return $this->_client;
+	}
+
 	public function main() {
-		$this->LH->source('accepted');
+		$this->LHProject->source('accepted');
 
 		Configure::load('github');
 		$this->_config = Configure::read('Github');
-		$this->_users = $this->_config['users'];
 
-		$this->Client = new Github\Client();
-		$this->Client->authenticate($this->_config['token'], '', Github\Client::AUTH_HTTP_TOKEN);
-
-		if (!$this->args) {
-			$this->args = $this->LH->projects();
+		$projects = $this->args;
+		if (!$projects) {
+			$projects = $this->LHProject->all();
 		}
 
-		foreach ($this->args as $project) {
+		foreach ($projects as $project) {
 			$this->import($project);
 		}
 	}
 
 	public function import($project) {
-		list($account, $project) = $this->LH->projectId($project);
+		list($account, $project) = $this->LHProject->project($project);
 
-		$this->_config = Configure::read("Github.projects.$account.$project");
-		if (!$this->_config) {
+		if (empty($this->_config['projects'][$account][$project])) {
 			return false;
 		}
 
-		$pid = "$account/$project";
-		$tickets = $this->LH->tickets($pid);
-		foreach ($tickets as $id) {
-			$data = $this->LH->ticket($pid, $id);
+		$this->_projectConfig =& $this->_config['projects'][$account][$project];
+		if (
+			!$this->_projectConfig['account'] ||
+			!$this->_projectConfig['project']
+		) {
+			return false;
+		}
+
+		if (empty($this->_projectConfig['labels'])) {
+			$this->_projectConfig['labels'] = [];
+		}
+		if (empty($this->_projectConfig['milestones'])) {
+			$this->_projectConfig['milestones'] = [];
+		}
+
+		foreach ($this->LHTicket->all() as $id) {
+			$data = $this->LHTicket->data($id);
 			if (!$data) {
 				$this->out(sprintf('<error>Skipping invalid ticket with id %s</error>', $id));
 				continue;
 			}
+
 			if (empty($data['github'])) {
-				$data = $this->_createTicket($data);
-				$this->LH->updateTicket($pid, $data);
+				$data = $this->_createTicket($id, $data);
+				if (!$data) {
+					continue;
+				}
 			}
 
-			$this->_createComments($pid, $data);
+			$this->_createComments($id, $data);
 		}
 	}
 
-	protected function _createTicket($data) {
+	protected function _createTicket($id, $data) {
 		$ticket = $data['ticket'];
 		$toCreate = [
 			'title' => $ticket['title'],
 			'body' => $ticket['body'],
 			'milestone' => $ticket['milestone'],
-			'labels' => explode(' ', $ticket['tag'])
+			'labels' => $this->_deriveTags($ticket['tag'])
 		];
 
 		$toCreate = $this->_prepareTicketBody($toCreate, $ticket);
 		$toCreate = $this->_translateMilestone($toCreate);
 		$toCreate = $this->_ensureLabels($toCreate);
 
-		$issue = $this->Client->api('issue')
-			->create($this->_config['account'], $this->_config['project'], $toCreate);
+		$issue = $this->client()->api('issue')
+			->create($this->_projectConfig['account'], $this->_projectConfig['project'], $toCreate);
 
 		$this->out(
-			sprintf('Github issue %s/%s #%d created for ticket %s', $this->_config['account'], $this->_config['project'], $issue['number'], $ticket['title'])
+			sprintf('Github issue %s/%s #%d created for ticket %s', $this->_projectConfig['account'], $this->_projectConfig['project'], $issue['number'], $ticket['title'])
 		);
 
 		$data['github'] = $issue;
+		$this->LHTicket->update($id, $data);
 
 		return $data;
 	}
 
-	protected function _createComments($pid, $ticket) {
-		$return = false;
+	protected function _createComments($id, $data) {
+		$updated = false;
 
-		foreach ($ticket['comments'] as &$comment) {
-			$return = $this->_createComment($comment, $ticket) || $return;
+		foreach ($data['comments'] as &$comment) {
+			$updated = $this->_createComment($comment, $data) || $updated;
 		}
 
-		if ($return) {
-			return $this->LH->updateTicket($pid, $ticket);
+		if ($updated) {
+			return $this->LHTicket->update($id, $data);
 		}
 		return false;
 	}
@@ -136,23 +146,22 @@ class ImportShell extends AppShell {
 		$data['body'] = $this->_escapeMentions($comment['body']);
 
 		$author = $comment['user_name'];
-		if (!empty($this->_users[$author])) {
-			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_users[$author]);
+		if (!empty($this->_config['users'][$author])) {
+			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_config['users'][$author]);
 		}
 
-		$data['body'] = sprintf("Created by **%s**\n", $author) .
-			sprintf("On <time datetime='%s'>%s</time>\n", $comment['created_at'], date('jS M Y', strtotime($comment['created_at']))) .
+		$data['body'] = sprintf("**%s** said, %s:\n", $author, date('jS M Y', strtotime($comment['created_at']))) .
 			"- - - -\n" .
 			"\n" .
 			$data['body'];
 
-		$return = $this->Client->api('issue')->comments()
-			->create($this->_config['account'], $this->_config['project'], $ticket['github']['number'], $data);
+		$updated = $this->client()->api('issue')->comments()
+			->create($this->_projectConfig['account'], $this->_projectConfig['project'], $ticket['github']['number'], $data);
 
-		if ($return) {
-			$comment['github'] = $return;
+		if ($updated) {
+			$comment['github'] = $updated;
 		}
-		return $return;
+		return $updated;
 	}
 
 	protected function _prepareTicketBody($data, $ticket) {
@@ -160,12 +169,11 @@ class ImportShell extends AppShell {
 		$data['body'] = $this->_escapeMentions($data['body']);
 
 		$author = $ticket['created_by'];
-		if (!empty($this->_users[$author])) {
-			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_users[$author]);
+		if (!empty($this->_config['users'][$author])) {
+			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_config['users'][$author]);
 		}
-		$data['body'] = sprintf("Created by **%s**\n", $author) .
-			sprintf("On <time datetime='%s'>%s</time>\n", $ticket['created_at'], date('jS M Y', strtotime($ticket['created_at']))) .
-			sprintf("*(via [Lighthouse](%s))*\n", $ticket['link']) .
+		$data['body'] = sprintf("Created by **%s**, %s. ", $author, date('jS M Y', strtotime($ticket['created_at']))) .
+			sprintf("*(originally [Lighthouse ticket #%s](%s))*:\n", $ticket['id'], $ticket['link']) .
 			"- - - -\n" .
 			"\n" .
 			$data['body'];
@@ -184,22 +192,24 @@ class ImportShell extends AppShell {
 			return $data;
 		}
 
-		if (!$this->_milestones) {
-			$response = $this->Client->api('issue')->milestones()
-				->all($this->_config['account'], $this->_config['project']);
-			$this->_milestones = Hash::combine($response, '{n}.title', '{n}.number');
+		if (!$this->_projectConfig['milestones']) {
+			$response = $this->client()->api('issue')->milestones()
+				->all($this->_projectConfig['account'], $this->_projectConfig['project']);
+			$this->_projectConfig['milestones'] = Hash::combine($response, '{n}.title', '{n}.number');
+			$this->_dump('github', $this->_config);
 		}
 
-		if (!isset($this->_milestones[$milestone])) {
+		if (!isset($this->_projectConfig['milestones'][$milestone])) {
 			$toCreate = [
 				'title' => $milestone
 			];
-			$result = $this->Client->api('issue')->milestones()
-				->create($this->_config['account'], $this->_config['project'], $toCreate);
-			$this->_milestones[$milestone] = $result['number'];
+			$result = $this->client()->api('issue')->milestones()
+				->create($this->_projectConfig['account'], $this->_projectConfig['project'], $toCreate);
+			$this->_projectConfig['milestones'][$milestone] = $result['number'];
+			$this->_dump('github', $this->_config);
 		}
 
-		$data['milestone'] = $this->_milestones[$milestone];
+		$data['milestone'] = $this->_projectConfig['milestones'][$milestone];
 
 		return $data;
 	}
@@ -211,35 +221,55 @@ class ImportShell extends AppShell {
 			return $data;
 		}
 
-		if (!$this->_labels) {
-			$response = $this->Client->api('issue')->labels()
-				->all($this->_config['account'], $this->_config['project']);
-			$this->_labels = Hash::combine($response, '{n}.name', '{n}');
+		if (!$this->_projectConfig['labels']) {
+			$response = $this->client()->api('issue')->labels()
+				->all($this->_projectConfig['account'], $this->_projectConfig['project']);
+			$this->_projectConfig['labels'] = Hash::combine($response, '{n}.name', '{n}.name');
+			$this->_dump('github', $this->_config);
 		}
 
 		foreach ($labels as $i => $label) {
-			if (!isset($this->_labels[$label])) {
+			if (!isset($this->_projectConfig['labels'][$label])) {
 				$toCreate = [
 					'name' => $label
 				];
-				$result = $this->Client->api('issue')->labels()
-					->create($this->_config['account'], $this->_config['project'], $toCreate);
+				$result = $this->client()->api('issue')->labels()
+					->create($this->_projectConfig['account'], $this->_projectConfig['project'], $toCreate);
 
-				$this->_labels[$label] = $result;
+				$this->_projectConfig['labels'][$label] = $label;
+				$this->_dump('github', $this->_config);
 			}
 		}
 
 		return $data;
 	}
 
-	protected function _update($account, $project, $type, $data) {
-		$id = $data['ticket']['filename'];
-		$path = $this->_path($account, $project, $type, $id);
+/**
+ * _deriveTags
+ *
+ * Account for the way lighthouse returns tags as a string of the format:
+ *   foo "multi word tag" bar BAR
+ *
+ * And permitting duplicate tags that differ only by case
+ *
+ * @param string $input
+ * @return array
+ */
+	protected function _deriveTags($input) {
+		$tags = [];
 
-		$File = new File('accepted/' . $path, true);
-		if (!is_string($data)) {
-			$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		if (preg_match_all('@"(.+)"@', $input, $matches)) {
+			$tags = $matches[1];
+			$input = str_replace($matches[0], '', $input);
 		}
-		return $File->write($data);
+
+		$tags = array_merge(
+			$matches[1],
+			array_filter(explode(' ', $input))
+		);
+		$tags = array_unique(array_map('strtolower', $tags));
+		sort($tags);
+
+		return $tags;
 	}
 }
