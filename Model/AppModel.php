@@ -68,9 +68,37 @@ class AppModel extends Object {
  * @return bool
  */
 	public function is($id, $what) {
-		$path = $this->_path($id, true);
+		$path = $this->path($id, true);
 		$path = preg_replace('@data/[^/]*@', 'data/' . $what, $path);
 		return file_exists($path);
+	}
+
+/**
+ * Get the path to a json file of a specific type
+ *
+ * LH export files store files in the following format:
+ *
+ * account/
+ *   projects/
+ *     9999-project/
+ *       milestones/
+ *         9999-name.json
+ *       pages/
+ *         name.json
+ *       tickets/
+ *         9999-name/ticket.json
+ *
+ * @param string $id
+ * @return string
+ */
+	public function path($id, $full = false) {
+		list($account, $project) = $this->project();
+		$type = $this->_type;
+		$return = "$account/projects/$project/$type/$id";
+
+		if ($full) {
+			return $this->source() . $return;
+		}
 	}
 
 /**
@@ -132,34 +160,6 @@ class AppModel extends Object {
 	}
 
 /**
- * Get the path to a json file of a specific type
- *
- * LH export files store files in the following format:
- *
- * account/
- *   projects/
- *     9999-project/
- *       milestones/
- *         9999-name.json
- *       pages/
- *         name.json
- *       tickets/
- *         9999-name/ticket.json
- *
- * @param string $id
- * @return string
- */
-	protected function _path($id, $full = false) {
-		list($account, $project) = $this->project();
-		$type = $this->_type;
-		$return = "$account/projects/$project/$type/$id";
-
-		if ($full) {
-			return $this->source() . $return;
-		}
-	}
-
-/**
  * read by id
  *
  * The id is the filename, except for tickets where it is a folder name
@@ -169,7 +169,7 @@ class AppModel extends Object {
  * @return array
  */
 	protected function _read($id) {
-		$path = $this->_path($id, true);
+		$path = $this->path($id, true);
 
 		if (!file_exists($path)) {
 			throw new CakeException(sprintf('The file %s doesn\'t exist', $path));
@@ -188,7 +188,7 @@ class AppModel extends Object {
  * @return bool
  */
 	protected function _write($id, $data) {
-		$path = $this->_path($id, true);
+		$path = $this->path($id, true);
 
 		$File = new File($path, true);
 
