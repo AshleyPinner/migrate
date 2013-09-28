@@ -13,7 +13,7 @@ class LHProject extends LighthouseAppModel {
  */
 	public function all($account = '*') {
 		if ($account === '*') {
-			$return = array();
+			$return = [];
 
 			foreach ($this->accounts() as $account) {
 				$projects = $this->all($account);
@@ -118,7 +118,7 @@ class LHProject extends LighthouseAppModel {
 					substr($project, 0, $len) === $input ||
 					substr($project, -$len) === $input
 				) {
-					return array($account, $project);
+					return [$account, $project];
 				}
 			}
 		}

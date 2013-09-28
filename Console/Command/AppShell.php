@@ -5,10 +5,10 @@ class AppShell extends Shell {
 	public function getOptionParser() {
 		$parser = parent::getOptionParser();
 		$parser
-			->addArgument('project', array(
+			->addArgument('project', [
 				'help' => 'Project name',
 				'required' => false
-			));
+			]);
 		return $parser;
 	}
 

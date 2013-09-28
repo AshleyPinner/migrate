@@ -16,14 +16,14 @@ class SkipShell extends AppShell {
 		$parser = parent::getOptionParser();
 		$parser
 			->description('Skip tickets by state')
-			->addOption('open', array(
+			->addOption('open', [
 				'boolean' => true,
 				'help' => 'All open tickets'
-			))
-			->addOption('closed', array(
+			])
+			->addOption('closed', [
 				'boolean' => true,
 				'help' => 'All closed tickets'
-			))
+			])
 			->epilog('Tickets can be skipped by state as a broad means of defining what to import.');
 
 		return $parser;

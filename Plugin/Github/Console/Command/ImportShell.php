@@ -18,10 +18,10 @@ class ImportShell extends AppShell {
 		$parser = new ConsoleOptionParser('Github.import');
 		$parser
 			->description('Import tickets to github')
-			->addArgument('project', array(
+			->addArgument('project', [
 				'help' => 'Project name',
 				'required' => true
-			))
+			])
 			->epilog('Milestones and labels are created as required, this command requires an api token with commit rights to the relevant repository to be able to create milestones and labels, otherwise tickets are created without this information.');
 
 		return $parser;

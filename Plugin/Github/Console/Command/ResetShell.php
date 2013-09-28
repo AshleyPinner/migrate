@@ -11,10 +11,10 @@ class ResetShell extends AppShell {
 		$parser = new ConsoleOptionParser('Github.reset');
 		$parser
 			->description('Reset data to import again')
-			->addArgument('project', array(
+			->addArgument('project', [
 				'help' => 'Project name',
 				'required' => true
-			))
+			])
 			->epilog('The import script is written such that it will not import tickets/comments that have already been imported - this permits the import process to be restarted should it fail to complete without the risk of creating duplicate tickets/comments. This shell removes the github-specific markers from the data to be imported, permitting the import process to be re-run.');
 
 		return $parser;
