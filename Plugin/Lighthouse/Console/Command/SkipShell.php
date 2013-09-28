@@ -14,8 +14,6 @@ class SkipShell extends AppShell {
 		'closed' => false
 	];
 
-	protected $_pathPrefix = 'skipped/';
-
 	public function getOptionParser() {
 		$parser = parent::getOptionParser();
 		$parser
