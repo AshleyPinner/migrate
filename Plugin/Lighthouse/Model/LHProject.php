@@ -143,17 +143,36 @@ class LHProject extends LighthouseAppModel {
  * load a lighthouse export file
  *
  * A lighthouse export file is just a gzipped tar ball - expand it into the export folder
+ * If it's a project export, instead of an account export - move  the extracted files to
+ * where the rest of the code expects it to be.
  *
- * @param mixed $sourceGz
+ * @param string $sourceGz
  */
 	public function load($sourceGz) {
-		$file = basename($sourceGz);
-		$targetGz = $this->source() . $file;
+		$root = $this->source();
 
-		mkdir(dirname($targetGz), 0777, true);
+		$file = basename($sourceGz);
+		$targetGz = $root . $file;
+
+		if (!is_dir($root)) {
+			mkdir($root, 0777, true);
+		}
 		copy($sourceGz, $targetGz);
-		passthru(sprintf("cd %s; tar xvzf %s", escapeshellarg($this->source()), escapeShellarg($file)));
+		passthru(sprintf("cd %s; tar xvzf %s", escapeshellarg($root), escapeShellarg($file)));
 		unlink($targetGz);
+
+		if (file_exists($root . 'project.json')) {
+			$newName = $root . 'main/projects/' . preg_replace('@_\d{4}.*@', '', $file);
+
+			$tmpName = str_replace('export', 'temporary', $root);
+			if (is_dir($tmpName)) {
+				unlink($tmpName);
+			}
+			rename($root, $tmpName);
+
+			mkdir(dirname($newName), 0777, true);
+			rename($tmpName, $newName);
+		}
 	}
 
 /**
