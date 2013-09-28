@@ -18,8 +18,6 @@ class LHTicket extends LighthouseAppModel {
 		return $return;
 	}
 
-
-
 	public function data($id, $project = null) {
 		list($account, $project) = $this->project($project);
 
@@ -29,6 +27,10 @@ class LHTicket extends LighthouseAppModel {
 		}
 
 		return $return;
+	}
+
+	public function path($id, $full = false) {
+		return parent::path($id, $full) . '/ticket.json';
 	}
 
 	public function status($id, $project = null) {
@@ -52,7 +54,4 @@ class LHTicket extends LighthouseAppModel {
 		return $return;
 	}
 
-	protected function _path($id, $full = false) {
-		return parent::_path($id, $full) . '/ticket.json';
-	}
 }

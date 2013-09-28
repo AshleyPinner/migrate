@@ -157,6 +157,21 @@ class LHProject extends LighthouseAppModel {
 	}
 
 /**
+ * Overridden to define the path to a project config file
+ *
+ * @param string $id
+ * @return string
+ */
+	public function path($id, $full = false) {
+		list($account, $project) = $this->project();
+		$return = "$account/projects/$project/project.json";
+
+		if ($full) {
+			return $this->source() . $return;
+		}
+	}
+
+/**
  * renumber (tickets) for a project
  *
  * Also links unmodified files so that the renumbered data is a complete copy of the export data
@@ -231,21 +246,6 @@ class LHProject extends LighthouseAppModel {
 			$success = $success && $this->_link(preg_replace('@[^/]+@', '..', $target) . $source . $node, $target . $node);
 		}
 		return $success;
-	}
-
-/**
- * Overridden to define the path to a project config file
- *
- * @param string $id
- * @return string
- */
-	protected function _path($id, $full = false) {
-		list($account, $project) = $this->project();
-		$return = "$account/projects/$project/project.json";
-
-		if ($full) {
-			return $this->source() . $return;
-		}
 	}
 
 /**
