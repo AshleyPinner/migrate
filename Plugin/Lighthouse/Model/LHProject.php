@@ -6,8 +6,67 @@ App::uses('LighthouseAppModel', 'Lighthouse.Model');
 class LHProject extends LighthouseAppModel {
 
 /**
- * projectId
+ * list all projects by id
  *
+ * @param string $account
+ * @return array
+ */
+	public function all($account = '*') {
+		if ($account === '*') {
+			$return = array();
+
+			foreach ($this->accounts() as $account) {
+				$projects = $this->all($account);
+				$return = array_merge($return, $projects);
+			}
+			return $return;
+		}
+
+		$Folder = new Folder($this->source() . $account . '/projects');
+
+		list($return) = $Folder->read();
+
+		foreach ($return as &$ret) {
+			$ret = $account . '/' . $ret;
+		}
+		return $return;
+	}
+
+/**
+ * accounts
+ *
+ * List all accounts - doesn't really belong in the project model.. but source
+ * is defined here, and it's only really used by the "all projects" function
+ *
+ * @return array
+ */
+	public function accounts() {
+		$Folder = new Folder($this->source());
+		list($accounts) = $Folder->read();
+		return $accounts;
+	}
+
+	public function config($project = null) {
+		list($account, $project) = $this->project($project);
+
+		$config = $this->data($project);
+
+		$config['open_states_list'] = explode(',', $config['open_states_list']);
+		$config['closed_states_list'] = explode(',', $config['closed_states_list']);
+
+		$keep = [
+			'id',
+			'name',
+			'closed_states_list',
+			'open_states_list',
+			'open_tickets_count',
+			'created_at',
+			'updated_at'
+		];
+		return array_intersect_key($config, array_flip($keep));
+	}
+
+/**
  * Determine the project id from (user) input, for the project user/12345-project-name,
  * Will accept any of:
  *
@@ -43,7 +102,7 @@ class LHProject extends LighthouseAppModel {
 			$Folder = new Folder($this->source() . $account);
 			list($folders) = $Folder->read();
 			foreach ($folders as $account) {
-				$return = $this->projectId($input, $account, false);
+				$return = $this->id($input, $account, false);
 				if (array_filter($return)) {
 					return $return;
 				}
@@ -68,10 +127,24 @@ class LHProject extends LighthouseAppModel {
 	}
 
 /**
- * load
+ * setId
+ *
+ * Set the active project
+ *
+ * @param string $id
+ */
+	public function setId($id) {
+		list($account, $project) = $this->id($id);
+		Configure::write('LH.account', $account);
+		Configure::write('LH.project', $project);
+	}
+
+/**
+ * load a lighthouse export file
+ *
+ * A lighthouse export file is just a gzipped tar ball - expand it into the export folder
  *
  * @param mixed $sourceGz
- * @return void
  */
 	public function load($sourceGz) {
 		$file = basename($sourceGz);
@@ -86,7 +159,7 @@ class LHProject extends LighthouseAppModel {
 /**
  * renumber (tickets) for a project
  *
- * @return void
+ * Also links unmodified files so that the renumbered data is a complete copy of the export data
  */
 	public function renumber() {
 		list($account, $project) = $this->project();
@@ -112,6 +185,23 @@ class LHProject extends LighthouseAppModel {
 		foreach ($tickets as $id) {
 			$this->_renumberTicket($id, $fromDir, $toDir);
 		}
+	}
+
+/**
+ * create a symlink from one file/folder to another location
+ *
+ * @param string $from
+ * @param string $to
+ * @return bool
+ */
+	protected function _link($from, $to) {
+		if (file_exists($to)) {
+			$this->log(sprintf('skipping %s, already exists', $this->_shortPath($to)), LOG_DEBUG);
+			return false;
+		}
+
+		$this->log(sprintf('linking %s', $this->_shortPath($to)), LOG_INFO);
+		return symlink($from, $to);
 	}
 
 /**
@@ -144,7 +234,25 @@ class LHProject extends LighthouseAppModel {
 	}
 
 /**
+ * Overridden to define the path to a project config file
+ *
+ * @param string $id
+ * @return string
+ */
+	protected function _path($id, $full = false) {
+		list($account, $project) = $this->project();
+		$return = "$account/projects/$project/project.json";
+
+		if ($full) {
+			return $this->source() . $return;
+		}
+	}
+
+/**
  * _renumberTicket
+ *
+ * Reformat the ticket to be a six digit, 0-padded number with the original slug
+ * Then create a symlink to the original ticket
  *
  * @param string $ticketId
  * @param string $fromDir
@@ -162,19 +270,12 @@ class LHProject extends LighthouseAppModel {
 	}
 
 /**
- * create a symlink from one file/folder to another location
+ * Use a shorter path in log messages
  *
- * @param string $from
- * @param string $to
- * @return bool
+ * @param string $path
+ * @return string
  */
-	protected function _link($from, $to) {
-		if (file_exists($to)) {
-			$this->log(sprintf('skipping %s, already exists', $to), LOG_DEBUG);
-			return false;
-		}
-
-		$this->log(sprintf('linking %s to %s', $to, $from), LOG_INFO);
-		return symlink($from, $to);
+	protected function _shortPath($path) {
+		return preg_replace('@.*/([^/]*)/projects/(.*)@', '\2', $path);
 	}
 }
