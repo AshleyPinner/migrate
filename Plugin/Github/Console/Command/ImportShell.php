@@ -90,7 +90,7 @@ class ImportShell extends AppShell {
 				$data = $this->_createTicket($id, $data);
 			}
 
-			$this->_createComments($data);
+			$this->_createComments($id, $data);
 		}
 	}
 
@@ -107,13 +107,11 @@ class ImportShell extends AppShell {
 		$toCreate = $this->_translateMilestone($toCreate);
 		$toCreate = $this->_ensureLabels($toCreate);
 
-		debug ($toCreate);
-		die;
 		$issue = $this->client()->api('issue')
-			->create($this->_config['account'], $this->_config['project'], $toCreate);
+			->create($this->_projectConfig['account'], $this->_projectConfig['project'], $toCreate);
 
 		$this->out(
-			sprintf('Github issue %s/%s #%d created for ticket %s', $this->_config['account'], $this->_config['project'], $issue['number'], $ticket['title'])
+			sprintf('Github issue %s/%s #%d created for ticket %s', $this->_projectConfig['account'], $this->_projectConfig['project'], $issue['number'], $ticket['title'])
 		);
 
 		$data['github'] = $issue;
@@ -149,13 +147,13 @@ class ImportShell extends AppShell {
 			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_config['users'][$author]);
 		}
 
-		$data['body'] = sprintf("**%s** commented on %s\n", $author, date('jS M Y', strtotime($comment['created_at']))) .
+		$data['body'] = sprintf("**%s** commented, %s:\n", $author, date('jS M Y', strtotime($comment['created_at']))) .
 			"- - - -\n" .
 			"\n" .
 			$data['body'];
 
 		$updated = $this->client()->api('issue')->comments()
-			->create($this->_config['account'], $this->_config['project'], $ticket['github']['number'], $data);
+			->create($this->_projectConfig['account'], $this->_projectConfig['project'], $ticket['github']['number'], $data);
 
 		if ($updated) {
 			$comment['github'] = $updated;
@@ -173,7 +171,7 @@ class ImportShell extends AppShell {
 		}
 		$data['body'] = sprintf("Created by **%s**\n", $author) .
 			sprintf("On <time datetime='%s'>%s</time>\n", $ticket['created_at'], date('jS M Y', strtotime($ticket['created_at']))) .
-			sprintf("*(originally [Lighthouse ticket %s](%s))*\n", $ticket['id'], $ticket['link']) .
+			sprintf("*(originally [Lighthouse ticket #%s](%s))*\n", $ticket['id'], $ticket['link']) .
 			"- - - -\n" .
 			"\n" .
 			$data['body'];
