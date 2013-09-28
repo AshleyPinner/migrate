@@ -34,7 +34,6 @@ class SkipShell extends AppShell {
 	}
 
 	public function main() {
-
 		$this->settings['open'] = $this->params['open'];
 		$this->settings['closed'] = $this->params['closed'];
 
@@ -88,12 +87,16 @@ class SkipShell extends AppShell {
 			} else {
 				$this->LHProject->source('skipped');
 			}
-			$this->LHTicket->update($id, $data);
+			$this->_update($id, $data);
 			$this->LHProject->source('renumbered');
 			return;
 		}
 
 		$this->out("<comment>Skipping ticket $number: $title, ticket is $status</comment>", 1, Shell::VERBOSE);
 		return false;
+	}
+
+	protected function _update($id, $data) {
+		$this->LHTicket->update($id, $data);
 	}
 }
