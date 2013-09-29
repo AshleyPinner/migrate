@@ -45,6 +45,11 @@ class SkipShell extends AppShell {
 		}
 
 		foreach ($projects as $project) {
+			if ($this->name === 'Accept') {
+				$this->LHProject->source('accepted');
+				$this->LHProject->linkCommon($project);
+				$this->LHProject->source('renumbered');
+			}
 			$this->processTickets($project);
 		}
 	}
@@ -63,7 +68,7 @@ class SkipShell extends AppShell {
 		$isSpam = $this->LHTicket->is($id, 'spam');
 
 		$data = $this->LHTicket->data($id);
-		$status = $this->LHTicket->status($id);
+		$status = $this->LHTicket->status($id, $data);
 		$number = $data['ticket']['number'];
 		$title = $data['ticket']['title'];
 

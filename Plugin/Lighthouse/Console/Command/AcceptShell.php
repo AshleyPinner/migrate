@@ -46,7 +46,7 @@ class AcceptShell extends SkipShell {
 				'id' => $data['number'],
 				'title' => $data['title'],
 				'body' => $data['body'],
-				'status' => $this->LHTicket->status($id),
+				'status' => $this->LHTicket->status($id, ['ticket' => $data]),
 				'milestone' => isset($data['milestone_title']) ? $data['milestone_title'] : null,
 				'tag' => $data['tag'],
 				'link' => $data['url'],
