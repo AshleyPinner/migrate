@@ -111,7 +111,15 @@ class ReviewShell extends AppShell {
 		$this->out(String::truncate($comment['body'], 800), 2, $verbosity);
 
 		if (!$accept) {
-			$accept = $this->in(sprintf('Approve this comment by %s?', $user), ['y', 'n', 'Y', 'N']);
+			if ($this->_isSpam($comment)) {
+				$accept = 'N';
+			}
+		}
+
+		if (!$accept) {
+			list($account) = $this->LHTicket->project();
+			$profileLink = sprintf('https://%s.lighthouseapp.com/users/%d', $account, $userId);
+			$accept = $this->in(sprintf('Approve this comment by %s (%s)?', $user, $profileLink), ['y', 'n', 'Y', 'N']);
 
 			if ($accept === strtoupper($accept)) {
 				$this->_alwaysUser($userId, $user, $accept);
@@ -163,12 +171,11 @@ class ReviewShell extends AppShell {
 		$this->out(String::truncate($data['ticket']['body'], 800), 2, $verbosity);
 
 		if (!$accept) {
-			if ($data['ticket']['title'] === $user) {
-				// A common spam pattern
+			if ($this->_isSpam($data['ticket'])) {
 				$accept = 'N';
 			} else {
 				$config = $this->LHProject->config();
-				$default = trim($config['default_ticket_text']);
+				$default = $this->_trim($config['default_ticket_text']);
 				if (trim($data['ticket']['body']) === $default) {
 					// Probably spam, but also possibly a mistake
 					$accept = 'n';
@@ -222,5 +229,37 @@ class ReviewShell extends AppShell {
 		}
 
 		$this->_dump('lighthouse', $this->_config);
+	}
+
+/**
+ * _isSpam
+ *
+ * Detect common/simple spam patterns so that the user doesn't need to review blatant junk
+ *
+ * @param array $data
+ * @return bool
+ */
+	protected function _isSpam($data) {
+		return (
+			(isset($data['title']) && $data['title'] === $data['user_name']) || // Title is username
+			preg_match('@^".+":https?://\S+$@', $this->_trim($data['body'])) || // Body is just a link
+			preg_match('@^<a href=".+?">.*?</a>$@', $this->_trim($data['body'])) || // Body is just a link
+			preg_match('@https?://\S+$@', $this->_trim($data['body'])) || // Body is just a link
+			!$this->_trim(preg_replace('@\[.+?\]\(.+?\)@', '', $this->_trim($data['body']))) || // Body is all links
+			!$this->_trim(strip_tags(preg_replace('@<a.*?/a>@', '', $this->_trim($data['body'])))) // Body is all links
+		);
+	}
+
+/**
+ * strip leading/trailing noise
+ *
+ * remove spaces, common seperators and things that look like spaces such as AO (none
+ * breaking space)
+ *
+ * @param string $str
+ * @return stringd
+ */
+	protected function _trim($str) {
+		return trim($str, " \t\n\r\0\x0B-_~| ");
 	}
 }
