@@ -50,6 +50,9 @@ class LHProject extends LighthouseAppModel {
 		list($account, $project) = $this->project($project);
 
 		$config = $this->data($project);
+		if (isset($config['project'])) {
+			$config = current($config);
+		}
 
 		$config['open_states_list'] = explode(',', $config['open_states_list']);
 		$config['closed_states_list'] = explode(',', $config['closed_states_list']);
@@ -57,6 +60,7 @@ class LHProject extends LighthouseAppModel {
 		$keep = [
 			'id',
 			'name',
+			'default_ticket_text',
 			'closed_states_list',
 			'open_states_list',
 			'open_tickets_count',
