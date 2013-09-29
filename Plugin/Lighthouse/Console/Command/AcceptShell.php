@@ -26,7 +26,7 @@ class AcceptShell extends SkipShell {
 		}
 
 		$comments = [];
-		$keep = array_flip(['body', 'title', 'user_name', 'created_at']);
+		$keep = array_flip(['body', 'title', 'user_id', 'user_name', 'created_at']);
 		foreach ($data['versions'] as $version) {
 			$comment = array_intersect_key($version, $keep);
 			if (
@@ -46,11 +46,12 @@ class AcceptShell extends SkipShell {
 				'id' => $data['number'],
 				'title' => $data['title'],
 				'body' => $data['body'],
+				'status' => $this->LHTicket->status($id),
 				'milestone' => isset($data['milestone_title']) ? $data['milestone_title'] : null,
 				'tag' => $data['tag'],
-				'closed' => $data['closed'],
 				'link' => $data['url'],
-				'created_by' => $data['creator_name'],
+				'user_id' => $data['creator_id'],
+				'user_name' => $data['creator_name'],
 				'created_at' => $data['created_at'],
 				'assigned_to' => null
 			],
