@@ -215,7 +215,7 @@ class LHProject extends LighthouseAppModel {
 		if (!is_dir($toDir)) {
 			mkdir($toDir, 0777, true);
 		}
-		$this->_linkCommon($source, $target);
+		$this->linkCommon($project, 'export');
 
 		$Folder = new Folder($fromDir);
 		list($tickets) = $Folder->read();
@@ -223,6 +223,31 @@ class LHProject extends LighthouseAppModel {
 		foreach ($tickets as $id) {
 			$this->_renumberTicket($id, $fromDir, $toDir);
 		}
+	}
+
+	public function linkCommon($project = null, $from = 'export') {
+		list($account, $project) = $this->project($project);
+		$path = $account . '/projects/' . $project;
+
+		$target = $this->source();
+		$currentSource = basename($target);
+		$source = $this->source($from);
+
+		$target .= $path . '/';
+		$source .= $path . '/';
+
+		$Folder = new Folder($source);
+		list($folders, $files) = $Folder->read();
+		$all = array_merge($folders, $files);
+
+		foreach ($all as $node) {
+			if ($node === 'tickets') {
+				continue;
+			}
+			$this->_link(preg_replace('@[^/]+@', '..', $target) . $source . $node, $target . $node);
+		}
+
+		$this->source($currentSource);
 	}
 
 /**
@@ -239,6 +264,9 @@ class LHProject extends LighthouseAppModel {
 		}
 
 		$this->log(sprintf('linking %s', $this->_shortPath($to)), LOG_INFO);
+		if (!is_dir(dirname($to))) {
+			mkdir(dirname($to), 0777, true);
+		}
 		return symlink($from, $to);
 	}
 
@@ -250,25 +278,6 @@ class LHProject extends LighthouseAppModel {
  * @return bool
  */
 	protected function _linkCommon($source, $target) {
-		if (substr($source, -1) !== '/') {
-			$source .= '/';
-		}
-		if (substr($target, -1) !== '/') {
-			$target .= '/';
-		}
-
-		$Folder = new Folder($source);
-		list($folders, $files) = $Folder->read();
-		$all = array_merge($folders, $files);
-
-		$success = true;
-		foreach ($all as $node) {
-			if ($node === 'tickets') {
-				continue;
-			}
-			$success = $success && $this->_link(preg_replace('@[^/]+@', '..', $target) . $source . $node, $target . $node);
-		}
-		return $success;
 	}
 
 /**

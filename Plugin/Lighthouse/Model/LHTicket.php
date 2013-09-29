@@ -33,10 +33,14 @@ class LHTicket extends LighthouseAppModel {
 		return parent::path($id, $full) . '/ticket.json';
 	}
 
-	public function status($id, $project = null) {
+	public function status($id, $data = [], $project = null) {
 		$config = $this->LHProject->config();
+		if (is_string($data)) {
+			$project = $data;
+			$data = [];
+		}
 
-		$data = $this->data($id, $project);
+		$data = $data ?: $this->data($id, $project);
 		$state = $data['ticket']['state'];
 
 		$return = null;
