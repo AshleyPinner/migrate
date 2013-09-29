@@ -19,7 +19,7 @@ class ReviewShell extends AppShell {
 		$parser = parent::getOptionParser();
 		$parser
 			->description('Interactively review approved tickets')
-			->epilog('Lighthouse tickets can be rife with spam, use this shell to review tickets and unapprove spam before the data is migrated to the target system');
+			->epilog('Lighthouse tickets can be rife with spam, use this shell to review tickets and unapprove spam before the data is migrated to the target system. To reset the review process modify the `Config/lighthouse.php` deleting the spammers/whitelist information');
 
 		return $parser;
 	}
@@ -68,7 +68,7 @@ class ReviewShell extends AppShell {
 
 			$updated = false;
 			foreach ($data['comments'] as $i => $comment) {
-				if (!$this->comment($id, $comment, $data)) {
+				if (!$this->comment($comment, $data)) {
 					unset ($data['comments'][$i]);
 					$data['spam'][$i] = $comment;
 					$updated = true;
@@ -76,7 +76,11 @@ class ReviewShell extends AppShell {
 			}
 
 			if ($updated) {
-				$this->out(sprintf('<info>Updating ticket %s %s, removing spam comment(s)</info>', $data['ticket']['id'], $data['ticket']['title']));
+				$this->out(sprintf(
+					'<info>Updating ticket %s %s, removing spam comment(s)</info>',
+					$data['ticket']['id'],
+					$data['ticket']['title']
+				));
 				$this->LHTicket->update($id, $data);
 			}
 		}
@@ -84,16 +88,17 @@ class ReviewShell extends AppShell {
 		$this->settings = $settings;
 	}
 
-	public function comment($idt, $comment, $data) {
-		$creator = $comment['user_name'];
+	public function comment($comment, $data) {
+		$user = $comment['user_name'];
+		$userId = $comment['user_id'];
 
 		$accept = false;
 		$verbosity = Shell::NORMAL;
-		if (in_array($creator, $this->_config['whitelist'])) {
+		if (isset($this->_config['whitelist'][$userId])) {
 			$accept = 'y';
 			$verbosity = Shell::VERBOSE;
 		}
-		if (in_array($creator, $this->_config['spammers'])) {
+		if (isset($this->_config['spammers'][$userId])) {
 			$accept = 'n';
 			$verbosity = Shell::VERBOSE;
 		}
@@ -106,17 +111,10 @@ class ReviewShell extends AppShell {
 		$this->out(String::truncate($comment['body'], 800), 2, $verbosity);
 
 		if (!$accept) {
-			$accept = $this->in(sprintf('Approve this comment by %s?', $creator), ['y', 'n', 'Y', 'N']);
+			$accept = $this->in(sprintf('Approve this comment by %s?', $user), ['y', 'n', 'Y', 'N']);
 
 			if ($accept === strtoupper($accept)) {
-				if ($accept === 'Y') {
-					$this->_config['whitelist'][] = $creator;
-				} else {
-					$this->_config['spammers'][] = $creator;
-					unset($this->_config['users'][$creator]);
-				}
-
-				$this->_dump('lighthouse', $this->_config);
+				$this->_alwaysUser($userId, $user, $accept);
 			}
 		}
 
@@ -143,15 +141,16 @@ class ReviewShell extends AppShell {
 	public function ticket($id) {
 		$data = $this->LHTicket->data($id);
 
-		$creator = $data['ticket']['created_by'];
+		$user = $data['ticket']['user_name'];
+		$userId = $data['ticket']['user_id'];
 
 		$accept = false;
 		$verbosity = Shell::NORMAL;
-		if (in_array($creator, $this->_config['whitelist'])) {
+		if (isset($this->_config['whitelist'][$userId])) {
 			$accept = 'y';
 			$verbosity = Shell::VERBOSE;
 		}
-		if (in_array($creator, $this->_config['spammers'])) {
+		if (isset($this->_config['spammers'][$userId])) {
 			$accept = 'n';
 			$verbosity = Shell::VERBOSE;
 		}
@@ -164,17 +163,26 @@ class ReviewShell extends AppShell {
 		$this->out(String::truncate($data['ticket']['body'], 800), 2, $verbosity);
 
 		if (!$accept) {
-			$accept = $this->in(sprintf('Approve this ticket by %s?', $creator), ['y', 'n', 'Y', 'N']);
+			if ($data['ticket']['title'] === $user) {
+				// A common spam pattern
+				$accept = 'N';
+			} else {
+				$config = $this->LHProject->config();
+				$default = trim($config['default_ticket_text']);
+				if (trim($data['ticket']['body']) === $default) {
+					// Probably spam, but also possibly a mistake
+					$accept = 'n';
+				}
+			}
+		}
+
+		if (!$accept) {
+			list($account) = $this->LHTicket->project();
+			$profileLink = sprintf('https://%s.lighthouseapp.com/users/%d', $account, $userId);
+			$accept = $this->in(sprintf('Approve this ticket by %s (%s)?', $user, $profileLink), ['y', 'n', 'Y', 'N']);
 
 			if ($accept === strtoupper($accept)) {
-				if ($accept === 'Y') {
-					$this->_config['whitelist'][] = $creator;
-				} else {
-					$this->_config['spammers'][] = $creator;
-					unset($this->_config['users'][$creator]);
-				}
-
-				$this->_dump('lighthouse', $this->_config);
+				$this->_alwaysUser($userId, $user, $accept);
 			}
 		}
 
@@ -197,4 +205,22 @@ class ReviewShell extends AppShell {
 		$this->out('<warning>Ticket moved to spam</warning>', 1, $verbosity);
 	}
 
+/**
+ * Mark a user as a spammer or an ok dude
+ *
+ * @param int $id
+ * @param string $name
+ * @param string $accept Y or N
+ */
+	protected function _alwaysUser($id, $name, $accept) {
+		if ($accept === 'Y') {
+			$this->_config['whitelist'][$id] = $name;
+		} else {
+			$this->_config['spammers'][$id] = $name;
+			unset($this->_config['whitelist'][$id]);
+			unset($this->_config['users'][$id]);
+		}
+
+		$this->_dump('lighthouse', $this->_config);
+	}
 }
