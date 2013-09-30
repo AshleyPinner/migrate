@@ -16,13 +16,13 @@ class ImportShellTest extends CakeTestCase {
  */
 	public function setUp() {
 		parent::setUp();
-		$out = $this->getMock('ConsoleOutput', array(), array(), '', false);
-		$in = $this->getMock('ConsoleInput', array(), array(), '', false);
+		$out = $this->getMock('ConsoleOutput', [], [], '', false);
+		$in = $this->getMock('ConsoleInput', [], [], '', false);
 
 		$this->Shell = $this->getMock(
 			'ImportShell',
-			array('in', 'out', 'hr', 'err', 'createFile', '_stop', '_checkUnitTest'),
-			array($out, $out, $in)
+			['in', 'out', 'hr', 'err', 'createFile', '_stop', '_checkUnitTest'],
+			[$out, $out, $in]
 		);
 		$this->setReflectionClassInstance($this->Shell);
 	}
@@ -50,25 +50,25 @@ class ImportShellTest extends CakeTestCase {
 	}
 
 	public function tagStringProvider() {
-		return array(
-			array('one', ['one']),
-			array('one "ONE"', ['one']),
-			array('one two', ['one', 'two']),
-			array('one TWO', ['one', 'two']),
-			array('one two TWO', ['one', 'two']),
-			array('"quoted"', ['quoted']),
-			array('"multi word"', ['multi word']),
-			array('"multi word" one two', ['multi word', 'one', 'two']),
-			array('notquoted "quoted"', ['notquoted', 'quoted']),
-			array('"quoted" notquoted', ['notquoted', 'quoted']),
-			array('notquoted "quoted" another', ['another', 'notquoted', 'quoted']),
-			array('notquoted another "quoted"', ['another', 'notquoted', 'quoted']),
-			array('"multi word" notquoted', ['multi word', 'notquoted']),
-			array(
+		return [
+			['one', ['one']],
+			['one "ONE"', ['one']],
+			['one two', ['one', 'two']],
+			['one TWO', ['one', 'two']],
+			['one two TWO', ['one', 'two']],
+			['"quoted"', ['quoted']],
+			['"multi word"', ['multi word']],
+			['"multi word" one two', ['multi word', 'one', 'two']],
+			['notquoted "quoted"', ['notquoted', 'quoted']],
+			['"quoted" notquoted', ['notquoted', 'quoted']],
+			['notquoted "quoted" another', ['another', 'notquoted', 'quoted']],
+			['notquoted another "quoted"', ['another', 'notquoted', 'quoted']],
+			['"multi word" notquoted', ['multi word', 'notquoted']],
+			[
 				'one "multi word" two three "more words" four "even more words" "last tag"',
 				['even more words', 'four', 'last tag', 'more words', 'multi word', 'one', 'three', 'two']
-			)
-		);
+			]
+		];
 	}
 
 }
