@@ -176,6 +176,7 @@ class ImportShell extends AppShell {
 		};
 
 		$data['body'] = $this->_escapeMentions($comment['body']);
+		$data['body'] = $this->_convertCodeblocks($comment['body']);
 
 		$author = $comment['user_name'];
 		if (!empty($this->_config['users'][$author])) {
@@ -199,6 +200,7 @@ class ImportShell extends AppShell {
 	protected function _prepareTicketBody($data, $ticket) {
 		$data['title'] = $this->_escapeMentions($data['title']);
 		$data['body'] = $this->_escapeMentions($data['body']);
+		$data['body'] = $this->_convertCodeblocks($data['body']);
 
 		$author = $ticket['user_name'];
 		if (!empty($this->_config['users'][$author])) {
@@ -213,8 +215,12 @@ class ImportShell extends AppShell {
 		return $data;
 	}
 
-	protected function _escapeMentions($data) {
-		return preg_replace('/@(\w+)/', '`@\1`', $data);
+	protected function _convertCodeblocks($text) {
+		return preg_replace('/\n@@@/', "\n```", $text);
+	}
+
+	protected function _escapeMentions($text) {
+		return preg_replace('/@(\w+)/', '`@\1`', $text);
 	}
 
 	protected function _translateMilestone($data) {
