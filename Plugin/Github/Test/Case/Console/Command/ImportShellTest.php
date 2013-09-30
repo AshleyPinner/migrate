@@ -64,6 +64,10 @@ class ImportShellTest extends CakeTestCase {
 			array('notquoted "quoted" another', ['another', 'notquoted', 'quoted']),
 			array('notquoted another "quoted"', ['another', 'notquoted', 'quoted']),
 			array('"multi word" notquoted', ['multi word', 'notquoted']),
+			array(
+				'one "multi word" two three "more words" four "even more words" "last tag"',
+				['even more words', 'four', 'last tag', 'more words', 'multi word', 'one', 'three', 'two']
+			)
 		);
 	}
 

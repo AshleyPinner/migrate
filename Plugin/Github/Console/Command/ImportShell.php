@@ -334,7 +334,7 @@ class ImportShell extends AppShell {
 	protected function _deriveTags($input) {
 		$tags = [];
 
-		if (preg_match_all('@"(.+)"@', $input, $matches)) {
+		if (preg_match_all('@"(.+?)"@', $input, $matches)) {
 			$tags = $matches[1];
 			$input = str_replace($matches[0], '', $input);
 		}
