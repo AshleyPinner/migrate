@@ -155,11 +155,22 @@ class ImportShell extends AppShell {
 		return $data;
 	}
 
+/**
+ * _createComments
+ *
+ * Make sure that comments are not created in the same second - otherwise they can be
+ * displayed on github out of sequence
+ *
+ * @param string $id
+ * @param array $data
+ * @return bool
+ */
 	protected function _createComments($id, $data) {
 		$updated = false;
 
 		foreach ($data['comments'] as &$comment) {
 			$updated = $this->_createComment($comment, $data) || $updated;
+			sleep(1);
 		}
 
 		if ($updated) {
@@ -176,7 +187,7 @@ class ImportShell extends AppShell {
 		};
 
 		$data['body'] = $this->_escapeMentions($comment['body']);
-		$data['body'] = $this->_convertCodeblocks($comment['body']);
+		$data['body'] = $this->_convertCodeblocks($data['body']);
 
 		$author = $comment['user_name'];
 		if (!empty($this->_config['users'][$author])) {
