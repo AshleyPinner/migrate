@@ -8,7 +8,8 @@
   "require" : {
     "php" : ">=5.4",
     "cakephp/cakephp" : "2.4.0",
-    "knplabs/github-api" : "1.2.*"
+    "knplabs/github-api" : "1.2.*",
+    "jippi/cakephp-test-utilities": "dev-master"
   },
   "minimum-stability": "dev",
   "repositories" : [
