@@ -120,6 +120,38 @@ class ImportShell extends AppShell {
 		$data['github'] = $issue;
 		$this->LHTicket->update($id, $data);
 
+		if ($ticket['status'] === 'closed') {
+			$this->client()->api('issue')
+				->update(
+					$this->_projectConfig['account'],
+					$this->_projectConfig['project'],
+					$issue['number'],
+					['state' => 'closed']
+				);
+		}
+
+		if (
+			$ticket['assigned_to'] &&
+			!empty($this->_config['users'][$ticket['assigned_to']])
+		) {
+			try {
+				$user = $this->_config['users'][$ticket['assigned_to']];
+				$this->client()->api('issue')
+					->update(
+						$this->_projectConfig['account'],
+						$this->_projectConfig['project'],
+						$issue['number'],
+						['assignee' => $user]
+					);
+			} catch (Github\Exception\ValidationFailedException $e) {
+				if (strpos($e->getMessage(), 'Field "assignee" is invalid') !== false) {
+					$this->log(sprintf('Unable to assign ticket %d to user %s, user must be a repo collaborator', $issue['number'], $user), LOG_INFO);
+				} else {
+					throw $e;
+				}
+			}
+		}
+
 		return $data;
 	}
 
@@ -168,7 +200,7 @@ class ImportShell extends AppShell {
 		$data['title'] = $this->_escapeMentions($data['title']);
 		$data['body'] = $this->_escapeMentions($data['body']);
 
-		$author = $ticket['created_by'];
+		$author = $ticket['user_name'];
 		if (!empty($this->_config['users'][$author])) {
 			$author = sprintf('[%s](https://github.com/%s)', $author, $this->_config['users'][$author]);
 		}
