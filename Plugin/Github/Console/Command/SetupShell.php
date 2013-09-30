@@ -72,7 +72,7 @@ class SetupShell extends AppShell {
 			}
 
 			$ghAccount = $ghProject = false;
-			$response = $this->in("Github account/project importing $name?");
+			$response = $this->in("Github account/project for importing $account/$project?");
 			if ($response) {
 				list($ghAccount, $ghProject) = explode('/', $response);
 			}
