@@ -246,7 +246,8 @@ class ReviewShell extends AppShell {
 			preg_match('@^<a href=".+?">.*?</a>$@', $this->_trim($data['body'])) || // Body is just a link
 			preg_match('@https?://\S+$@', $this->_trim($data['body'])) || // Body is just a link
 			!$this->_trim(preg_replace('@\[.+?\]\(.+?\)@', '', $this->_trim($data['body']))) || // Body is all links
-			!$this->_trim(strip_tags(preg_replace('@<a.*?/a>@', '', $this->_trim($data['body'])))) // Body is all links
+			!$this->_trim(strip_tags(preg_replace('@<a.*?/a>@', '', $this->_trim($data['body'])))) || // Body is all links
+			'spam' === strtolower($this->_trim($data['body'])) // Body is the word spam
 		);
 	}
 
