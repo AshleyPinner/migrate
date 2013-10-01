@@ -167,10 +167,16 @@ class ImportShell extends AppShell {
  */
 	protected function _createComments($id, $data) {
 		$updated = false;
+		$lastTime = false;
 
 		foreach ($data['comments'] as &$comment) {
+			$time = time();
+			if ($time === $lastTime) {
+				sleep(1);
+			}
+			$lastTime = $time;
+
 			$updated = $this->_createComment($comment, $data) || $updated;
-			sleep(1);
 		}
 
 		if ($updated) {
@@ -264,6 +270,9 @@ class ImportShell extends AppShell {
 						->all($this->_projectConfig['account'], $this->_projectConfig['project']);
 					$this->_projectConfig['milestones'] = Hash::combine($response, '{n}.title', '{n}.number');
 					$this->_dump('github', $this->_config);
+					if (!isset($this->_projectConfig['milestones'][$milestone])) {
+						debug ($this->_projectConfig['milestones']);
+					}
 					$data['milestone'] = $this->_projectConfig['milestones'][$milestone];
 
 					return $data;
