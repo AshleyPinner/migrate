@@ -3,11 +3,12 @@ App::uses('SkipShell', 'Lighthouse.Console/Command');
 
 class NamesShell extends AppShell {
 
-	protected $_pathPrefix = 'accepted/';
+	public $uses = [
+		'Lighthouse.LHProject',
+		'Lighthouse.LHTicket'
+	];
 
 	protected $_users = [];
-
-	public $tasks = ['Lighthouse.LH'];
 
 	public function getOptionParser() {
 		$parser = Shell::getOptionParser();
@@ -22,9 +23,9 @@ class NamesShell extends AppShell {
 			Configure::load('lighthouse');
 			$this->_users = Configure::read('Lighthouse.users');
 		}
-		$this->LH->source('accepted');
 
-		foreach ($this->LH->projects() as $id) {
+		$this->LHProject->source('accepted');
+		foreach ($this->LHProject->all() as $id) {
 			$this->process($id);
 		}
 
@@ -34,9 +35,9 @@ class NamesShell extends AppShell {
 	public function process($project) {
 		$this->out(sprintf('Processing %s', $project));
 
-		foreach ($this->LH->tickets($project) as $id) {
+		foreach ($this->LHTicket->all($project) as $id) {
 			$this->out(sprintf(' * Processing %s', $id));
-			$data = $this->LH->ticket($project, $id);
+			$data = $this->LHTicket->data($id);
 
 			$this->_add($data['ticket']['created_by']);
 
@@ -52,6 +53,7 @@ class NamesShell extends AppShell {
 			return;
 		}
 
+		$this->out("Adding user $username", 1, Shell::VERBOSE);
 		$this->_users[$username] = $username;
 	}
 

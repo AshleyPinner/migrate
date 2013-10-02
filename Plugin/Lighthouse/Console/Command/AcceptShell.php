@@ -3,8 +3,6 @@ App::uses('SkipShell', 'Lighthouse.Console/Command');
 
 class AcceptShell extends SkipShell {
 
-	protected $_pathPrefix = 'accepted/';
-
 	protected $_users = [];
 
 	public function getOptionParser() {
@@ -15,56 +13,56 @@ class AcceptShell extends SkipShell {
 		return $parser;
 	}
 
-	protected function _write($account, $project, $type, $id, $data) {
-		$path = $this->_path($account, $project, $type, $id);
-
-		$path = $this->_pathPrefix . $path;
-		$this->out("Writing $path");
-
-		$File = new File($path, true);
-
-		$data = $this->_preProcess($data, $id);
-
-		if (!is_string($data)) {
-			$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+/**
+ * For accepted tickets, reformat the data to only include what's interesting
+ *
+ * @param string $id
+ * @param string $data
+ * @return bool
+ */
+	protected function _update($id, $data) {
+		if (isset($data['ticket'])) {
+			$data = $data['ticket'];
 		}
-		return $File->write($data);
-	}
 
-	protected function _preProcess($data, $filename) {
 		$comments = [];
-		$keep = array_flip(['body', 'title', 'creator_name', 'user_name', 'created_at']);
+		$keep = array_flip(['body', 'title', 'user_id', 'user_name', 'created_at']);
 		foreach ($data['versions'] as $version) {
 			$comment = array_intersect_key($version, $keep);
-			if (strpos($comment['body'], '[[bulk edit](') === 0 || $comment['body'] === $data['body']) {
+			if (
+				!$comment['body'] ||
+				strpos($comment['body'], '[[bulk edit](') === 0 ||
+				$comment['body'] === $data['body']
+			) {
 				continue;
 			}
+
 			$comments[] = $comment;
 		}
 
-		$return = [
+		$toSave = [
 			'ticket' => [
-				'filename' => $filename,
+				'filename' => $id,
 				'id' => $data['number'],
 				'title' => $data['title'],
 				'body' => $data['body'],
+				'status' => $this->LHTicket->status($id, ['ticket' => $data]),
 				'milestone' => isset($data['milestone_title']) ? $data['milestone_title'] : null,
 				'tag' => $data['tag'],
-				'closed' => $data['closed'],
 				'link' => $data['url'],
-				'created_by' => $data['creator_name'],
+				'user_id' => $data['creator_id'],
+				'user_name' => $data['creator_name'],
 				'created_at' => $data['created_at'],
 				'assigned_to' => null
 			],
 			'comments' => $comments,
-			//'original' => $data
 		];
 
 		if ($data['assigned_user_id']) {
-			$return['ticket']['assigned_to'] = $this->_getUserName($data['assigned_user_id']);
+			$toSave['ticket']['assigned_to'] = $this->_getUserName($data['assigned_user_id']);
 		}
 
-		return $return;
+		return parent::_update($id, $toSave);
 	}
 
 /**

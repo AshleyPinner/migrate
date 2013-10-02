@@ -2,7 +2,10 @@
 
 class ReviewShell extends AppShell {
 
-	public $tasks = ['Lighthouse.LH'];
+	public $uses = [
+		'Lighthouse.LHProject',
+		'Lighthouse.LHTicket'
+	];
 
 	public $settings = [
 		'accept' => null,
@@ -16,33 +19,36 @@ class ReviewShell extends AppShell {
 		$parser = parent::getOptionParser();
 		$parser
 			->description('Interactively review approved tickets')
-			->epilog('Lighthouse tickets can be rife with spam, use this shell to review tickets and unapprove spam before the data is migrated to the target system');
+			->epilog('Lighthouse tickets can be rife with spam, use this shell to review tickets and unapprove spam before the data is migrated to the target system. To reset the review process modify the `Config/lighthouse.php` deleting the spammers/whitelist information');
 
 		return $parser;
 	}
 
-	public function main($project = null) {
-		if (!$project) {
-			if (!$this->_config && file_exists('Config/lighthouse.php')) {
-				Configure::load('lighthouse');
-				$this->_config = (array)Configure::read('Lighthouse');
+	public function main() {
+		if (!$this->_config && file_exists('Config/lighthouse.php')) {
+			Configure::load('lighthouse');
+			$this->_config = (array)Configure::read('Lighthouse');
+		}
+		foreach (['users', 'spammers', 'whitelist'] as $key) {
+			if (!isset($this->_config[$key])) {
+				$this->_config[$key] = [];
 			}
-			foreach (['users', 'spammers', 'whitelist'] as $key) {
-				if (!isset($this->_config[$key])) {
-					$this->_config[$key] = [];
-				}
-			}
-
-			$settings = $this->settings;
-			$this->LH->source('accepted');
-			$projects = $this->LH->projects();
-			foreach ($projects as $project) {
-				$this->settings = $settings;
-				$this->main($project);
-			}
-			return;
 		}
 
+		$this->LHProject->source('accepted');
+		$projects = $this->args;
+		if (!$projects) {
+			$projects = $this->LHProject->all();
+		}
+
+		$settings = $this->settings;
+		foreach ($projects as $project) {
+			$this->settings = $settings;
+			$this->project($project);
+		}
+	}
+
+	public function project($project) {
 		$this->tickets($project);
 		$this->comments($project);
 	}
@@ -50,15 +56,19 @@ class ReviewShell extends AppShell {
 	public function comments($project) {
 		$settings = $this->settings;
 
-		$tickets = $this->LH->tickets($project);
+		$tickets = $this->LHTicket->all($project);
 		foreach ($tickets as $id) {
-			$data = $this->LH->ticket($project, $id);
+			$data = $this->LHTicket->data($id);
+			if (!$data['comments']) {
+				$this->out(sprintf('<info>No comments for %s</info>', $data['ticket']['title']), Shell::VERBOSE);
+				continue;
+			}
 
 			$this->out(sprintf('Reviewing comments for %s', $data['ticket']['title']));
 
 			$updated = false;
 			foreach ($data['comments'] as $i => $comment) {
-				if (!$this->comment($project, $comment, $data)) {
+				if (!$this->comment($comment, $data)) {
 					unset ($data['comments'][$i]);
 					$data['spam'][$i] = $comment;
 					$updated = true;
@@ -66,25 +76,29 @@ class ReviewShell extends AppShell {
 			}
 
 			if ($updated) {
-				$this->out(sprintf('<info>Updating ticket %s %s, removing spam comment(s)</info>', $data['ticket']['id'], $data['ticket']['title']));
-				list($account, $pid) = $this->LH->projectId($project);
-				$this->_update($account, $pid, 'tickets', $data);
+				$this->out(sprintf(
+					'<info>Updating ticket %s %s, removing spam comment(s)</info>',
+					$data['ticket']['id'],
+					$data['ticket']['title']
+				));
+				$this->LHTicket->update($id, $data);
 			}
 		}
 
 		$this->settings = $settings;
 	}
 
-	public function comment($project, $comment, $data) {
-		$creator = $comment['user_name'];
+	public function comment($comment, $data) {
+		$user = $comment['user_name'];
+		$userId = $comment['user_id'];
 
 		$accept = false;
 		$verbosity = Shell::NORMAL;
-		if (in_array($creator, $this->_config['whitelist'])) {
+		if (isset($this->_config['whitelist'][$userId])) {
 			$accept = 'y';
 			$verbosity = Shell::VERBOSE;
 		}
-		if (in_array($creator, $this->_config['spammers'])) {
+		if (isset($this->_config['spammers'][$userId])) {
 			$accept = 'n';
 			$verbosity = Shell::VERBOSE;
 		}
@@ -97,17 +111,18 @@ class ReviewShell extends AppShell {
 		$this->out(String::truncate($comment['body'], 800), 2, $verbosity);
 
 		if (!$accept) {
-			$accept = $this->in(sprintf('Approve this comment by %s?', $creator), ['y', 'n', 'Y', 'N']);
+			if ($this->_isSpam($comment)) {
+				$accept = 'N';
+			}
+		}
+
+		if (!$accept) {
+			list($account) = $this->LHTicket->project();
+			$profileLink = sprintf('https://%s.lighthouseapp.com/users/%d', $account, $userId);
+			$accept = $this->in(sprintf('Approve this comment by %s (%s)?', $user, $profileLink), ['y', 'n', 'Y', 'N']);
 
 			if ($accept === strtoupper($accept)) {
-				if ($accept === 'Y') {
-					$this->_config['whitelist'][] = $creator;
-				} else {
-					$this->_config['spammers'][] = $creator;
-					unset($this->_config['users'][$creator]);
-				}
-
-				$this->_dump('lighthouse', $this->_config);
+				$this->_alwaysUser($userId, $user, $accept);
 			}
 		}
 
@@ -123,27 +138,27 @@ class ReviewShell extends AppShell {
 	public function tickets($project) {
 		$settings = $this->settings;
 
-		$tickets = $this->LH->tickets($project);
+		$tickets = $this->LHTicket->all($project);
 		foreach ($tickets as $id) {
-			$data = $this->LH->ticket($project, $id);
-			$this->ticket($project, $data);
+			$this->ticket($id);
 		}
 
 		$this->settings = $settings;
 	}
 
-	public function ticket($project, $data) {
-		list($account, $project) = $this->LH->projectId($project);
+	public function ticket($id) {
+		$data = $this->LHTicket->data($id);
 
-		$creator = $data['ticket']['created_by'];
+		$user = $data['ticket']['user_name'];
+		$userId = $data['ticket']['user_id'];
 
 		$accept = false;
 		$verbosity = Shell::NORMAL;
-		if (in_array($creator, $this->_config['whitelist'])) {
+		if (isset($this->_config['whitelist'][$userId])) {
 			$accept = 'y';
 			$verbosity = Shell::VERBOSE;
 		}
-		if (in_array($creator, $this->_config['spammers'])) {
+		if (isset($this->_config['spammers'][$userId])) {
 			$accept = 'n';
 			$verbosity = Shell::VERBOSE;
 		}
@@ -156,17 +171,25 @@ class ReviewShell extends AppShell {
 		$this->out(String::truncate($data['ticket']['body'], 800), 2, $verbosity);
 
 		if (!$accept) {
-			$accept = $this->in(sprintf('Approve this ticket by %s?', $creator), ['y', 'n', 'Y', 'N']);
+			if ($this->_isSpam($data['ticket'])) {
+				$accept = 'N';
+			} else {
+				$config = $this->LHProject->config();
+				$default = $this->_trim($config['default_ticket_text']);
+				if (trim($data['ticket']['body']) === $default) {
+					// Probably spam, but also possibly a mistake
+					$accept = 'n';
+				}
+			}
+		}
+
+		if (!$accept) {
+			list($account) = $this->LHTicket->project();
+			$profileLink = sprintf('https://%s.lighthouseapp.com/users/%d', $account, $userId);
+			$accept = $this->in(sprintf('Approve this ticket by %s (%s)?', $user, $profileLink), ['y', 'n', 'Y', 'N']);
 
 			if ($accept === strtoupper($accept)) {
-				if ($accept === 'Y') {
-					$this->_config['whitelist'][] = $creator;
-				} else {
-					$this->_config['spammers'][] = $creator;
-					unset($this->_config['users'][$creator]);
-				}
-
-				$this->_dump('lighthouse', $this->_config);
+				$this->_alwaysUser($userId, $user, $accept);
 			}
 		}
 
@@ -174,62 +197,70 @@ class ReviewShell extends AppShell {
 			$this->out('<info>Ticket accepted</info>', 1, $verbosity);
 			return;
 		}
+		$this->_markTicketAsSpam($id, $verbosity);
+	}
+
+	protected function _markTicketAsSpam($id, $verbosity) {
+		$path = $this->LHTicket->path($id, true);
+		$spamPath = str_replace('accepted', 'spam', $path);
+
+		$File = new File($spamPath, true);
+		$File->copy($path);
+		unlink($path);
+		rmdir(dirname($path));
 
 		$this->out('<warning>Ticket moved to spam</warning>', 1, $verbosity);
-		return $this->_skip($account, $project, 'tickets', $data);
 	}
 
-	protected function _skip($account, $project, $type, $data) {
-		$id = $data['ticket']['filename'];
-		$path = $this->_path($account, $project, $type, $id);
-
-		if (file_exists('accepted/' . $path)) {
-			unlink('accepted/' . $path);
-			rmdir('accepted/' . dirname($path));
+/**
+ * Mark a user as a spammer or an ok dude
+ *
+ * @param int $id
+ * @param string $name
+ * @param string $accept Y or N
+ */
+	protected function _alwaysUser($id, $name, $accept) {
+		if ($accept === 'Y') {
+			$this->_config['whitelist'][$id] = $name;
+		} else {
+			$this->_config['spammers'][$id] = $name;
+			unset($this->_config['whitelist'][$id]);
+			unset($this->_config['users'][$id]);
 		}
 
-		$File = new File('spam/' . $path, true);
-		if (!is_string($data)) {
-			$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-		}
-		return $File->write($data);
+		$this->_dump('lighthouse', $this->_config);
 	}
 
-	protected function _update($account, $project, $type, $data) {
-		$id = $data['ticket']['filename'];
-		$path = $this->_path($account, $project, $type, $id);
-
-		$File = new File('accepted/' . $path, true);
-		if (!is_string($data)) {
-			$data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-		}
-		return $File->write($data);
+/**
+ * _isSpam
+ *
+ * Detect common/simple spam patterns so that the user doesn't need to review blatant junk
+ *
+ * @param array $data
+ * @return bool
+ */
+	protected function _isSpam($data) {
+		return (
+			(isset($data['title']) && $data['title'] === $data['user_name']) || // Title is username
+			preg_match('@^".+":https?://\S+$@', $this->_trim($data['body'])) || // Body is just a link
+			preg_match('@^<a href=".+?">.*?</a>$@', $this->_trim($data['body'])) || // Body is just a link
+			preg_match('@https?://\S+$@', $this->_trim($data['body'])) || // Body is just a link
+			!$this->_trim(preg_replace('@\[.+?\]\(.+?\)@', '', $this->_trim($data['body']))) || // Body is all links
+			!$this->_trim(strip_tags(preg_replace('@<a.*?/a>@', '', $this->_trim($data['body'])))) || // Body is all links
+			'spam' === strtolower($this->_trim($data['body'])) // Body is the word spam
+		);
 	}
 
-	protected function _path($account, $project, $type, $id) {
-		if ($type === 'tickets') {
-			$id .= '/ticket.json';
-		}
-		return "$account/projects/$project/$type/$id";
-	}
-
-	protected function _dump($name, array $data) {
-		$filename = strtolower($name);
-		$name = ucfirst($filename);
-
-		if ($data === Configure::read($name)) {
-			$this->out(sprintf('No changes made to %s config', $name), 1, Shell::VERBOSE);
-			return false;
-		}
-		Configure::write($name, $data);
-
-		$this->out(sprintf('<info>Updating %s config</info>', $name, $filename), 1, Shell::VERBOSE);
-
-		$string = "<?php\n\n\$config = ['$name' => " . var_export($data, true) . "];\n";
-
-		$File = new File("Config/$filename.php", true);
-		$File->write($string);
-
-		return $name;
+/**
+ * strip leading/trailing noise
+ *
+ * remove spaces, common seperators and things that look like spaces such as AO (none
+ * breaking space)
+ *
+ * @param string $str
+ * @return stringd
+ */
+	protected function _trim($str) {
+		return trim($str, " \t\n\r\0\x0B-_~| ");
 	}
 }

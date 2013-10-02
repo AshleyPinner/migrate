@@ -4,8 +4,4 @@ tmp
 vendor
 
 #content folders
-export
-renumbered
-accepted
-skipped
-spam
+data
