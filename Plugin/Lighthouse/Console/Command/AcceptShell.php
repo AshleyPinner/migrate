@@ -25,6 +25,11 @@ class AcceptShell extends SkipShell {
 			$data = $data['ticket'];
 		}
 
+		if (!empty($data['spam'])) {
+			$this->out(sprintf('<error>Skipping spam ticket %s %s</error>', $data['number'], $data['title']));
+			return;
+		}
+
 		$comments = [];
 		$keep = array_flip(['body', 'title', 'user_id', 'user_name', 'created_at']);
 		foreach ($data['versions'] as $version) {
@@ -34,6 +39,11 @@ class AcceptShell extends SkipShell {
 				strpos($comment['body'], '[[bulk edit](') === 0 ||
 				$comment['body'] === $data['body']
 			) {
+				continue;
+			}
+
+			if (!empty($version['spam'])) {
+				$this->out(sprintf('<error>Skipping spam comment by %s: %s</error>', $comment['user_name'], String::truncate(str_replace("\n", ' ', $comment['body']), 100)));
 				continue;
 			}
 
